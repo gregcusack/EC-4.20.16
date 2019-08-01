@@ -6,11 +6,31 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
 #define PORT 4444
 #define PERIOD 1000000
 #define QUOTA 1000000
 #define MIN_QUOTA 5000
 #define MAX 32
+
+struct payload {
+	uint16_t group_id;
+	uint32_t amount;
+//	uint32_t resource	:	1;		//mem=0 or cpu=1
+//	uint32_t type		:	1;		//request=0 or give back=1
+//	uint32_t amount		:	30;		//max = 1.07 petabytes mem
+};
+
+void payload_hton(struct payload *p) {
+	p->group_id = htons(p->group_id);
+	p->amount = htonl(p->amount);
+}
+
+void payload_ntoh(struct payload *p) {
+	p->group_id = ntohs(p->group_id);
+	p->amount = ntohl(p->amount);
+}
+
 
 int main(int argc, char const *argv[])
 {
@@ -30,6 +50,9 @@ int main(int argc, char const *argv[])
     int32_t bandwidth_request;
     int32_t bandwidth_refill;
     char *bandwidth_refill_char;
+    struct payload rx_pkg;
+    uint16_t rx_group_id;
+    uint32_t rx_amount;
 
     port = strtol(argv[1], NULL, 10);
     printf("server port: %d\n", port);
@@ -69,27 +92,37 @@ int main(int argc, char const *argv[])
 //    	valread = read( new_socket , buffer, MAX);
 //    	printf("rx buffer: %s\n", buffer);
 //    	bandwidth_request = strtol(buffer, NULL, 10);
-    	valread = read(new_socket, &bandwidth_request, sizeof(bandwidth_request));
-    	bandwidth_request = ntohl(bandwidth_request);
+//    	valread = read(new_socket, &bandwidth_request, sizeof(bandwidth_request));
+    	valread = read(new_socket, &rx_pkg, sizeof(rx_pkg));
+//    	bandwidth_request = ntohl(bandwidth_request);
+    	payload_ntoh(&rx_pkg);
+    	rx_group_id = rx_pkg.group_id;
+    	rx_amount = rx_pkg.amount;
 
-    	printf("Rx BW request for %dns\n", bandwidth_request);
-    	if(bandwidth_request > QUOTA) {
+//    	printf("Rx BW request for %dns\n", bandwidth_request);
+    	printf("Rx. GID: %d, BW request: %dns\n", rx_group_id, rx_amount);
+
+    	if(rx_amount > QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
-    		bandwidth_request = QUOTA;
+    		rx_amount = QUOTA;
     	}
-    	if(bandwidth_request <= 0) {
+    	if(rx_amount <= 0) {
     		printf("bandwidth requested: %dms. Too small, sending back minimum.\n", bandwidth_request);
     		perror("ya should NOT be here\n. bandwidth requested was <= 0\n");
-    		bandwidth_request = MIN_QUOTA;
+    		rx_amount = MIN_QUOTA;
     	}
-    	bandwidth_refill = bandwidth_request;
-
-    	printf("Sending back %dms in bandwidth\n",bandwidth_refill);
+    	rx_pkg.group_id = rx_group_id - 1;
+    	rx_pkg.amount = rx_amount - 1;
+//    	bandwidth_refill = bandwidth_request;
+//
+//    	printf("Sending back %dms in bandwidth\n",bandwidth_refill);
 //    	bandwidth_refill_char = (unsigned char*)&bandwidth_refill;
 
-    	bandwidth_refill = htonl(bandwidth_refill);
+//    	bandwidth_refill = htonl(bandwidth_refill);
 
-    	send(new_socket , &bandwidth_refill , sizeof(bandwidth_refill) , 0 );
+//    	send(new_socket , &bandwidth_refill , sizeof(bandwidth_refill) , 0 );
+    	payload_hton(&rx_pkg);
+    	send(new_socket , &rx_pkg , sizeof(rx_pkg) , 0 );
     	printf("-------------------------\n");
     }
     return 0;
