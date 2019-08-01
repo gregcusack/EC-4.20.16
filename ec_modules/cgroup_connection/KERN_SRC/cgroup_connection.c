@@ -9,6 +9,25 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #include "cgroup_connection.h"
 
+#define PORT 4444
+
+u32 create_address(u8 *ip)
+{
+        u32 addr = 0;
+        int i;
+
+        for(i=0; i<4; i++)
+        {
+                addr += ip[i];
+                if(i==3)
+                        break;
+                addr <<= 8;
+        }
+        return addr;
+}
+
+
+
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
 	struct msghdr msg;
@@ -77,8 +96,6 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
-	printk(KERN_INFO "pid: %d\n", pid);
-
 	struct socket* sockfd_cli = NULL;
 
 	struct ec_connection* _ec_c;
@@ -94,8 +111,12 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	int ret;
 
 	char buf[50] = "Hi I am an EC client!";
+//	unsigned char destip[5] = {127,0,0,1,'\0'};
 
 	int valread = -1;
+//	int _pid = 1822;
+
+	printk(KERN_INFO "pid: %d\n", pid);
 
 	task_in_cg_pid = find_get_pid(pid);
 
@@ -135,6 +156,8 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
 	saddr.sin_addr.s_addr = in_aton(GCM_ip);
+//	saddr.sin_port = htons(PORT);
+//	saddr.sin_addr.s_addr = htonl(create_address(destip));
 
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR);
 
