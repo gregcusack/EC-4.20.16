@@ -111,10 +111,8 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	int ret;
 
 	char buf[50] = "Hi I am an EC client!";
-//	unsigned char destip[5] = {127,0,0,1,'\0'};
 
 	int valread = -1;
-//	int _pid = 1822;
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -156,8 +154,6 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
 	saddr.sin_addr.s_addr = in_aton(GCM_ip);
-//	saddr.sin_port = htons(PORT);
-//	saddr.sin_addr.s_addr = htonl(create_address(destip));
 
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR);
 

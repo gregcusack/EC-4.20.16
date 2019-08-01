@@ -8,12 +8,21 @@
 #define PORT 4444
 int main(int argc, char const *argv[])
 {
-    int server_fd, new_socket, valread;
+	if(argc < 2) {
+		perror("specify port\n");
+		exit(EXIT_FAILURE);
+	}
+
+
+    int server_fd, new_socket, valread, port;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
     char buffer[1024] = {0};
     char *hello = "Hello from server";
+
+    port = strtol(argv[1], NULL, 10);
+    printf("server port: %d\n", port);
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
