@@ -11,6 +11,9 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define PORT 4444
 
+struct ec_connection* _ec_c; // for testing purposes
+EXPORT_SYMBOL(_ec_c);
+
 u32 create_address(u8 *ip)
 {
         u32 addr = 0;
@@ -98,7 +101,7 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	struct socket* sockfd_cli = NULL;
 
-	struct ec_connection* _ec_c;
+//	struct ec_connection* _ec_c;
 
 	struct sockaddr_in saddr;
 
@@ -110,9 +113,13 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	int ret;
 
-	char buf[50] = "Hi I am an EC client!";
+//	char buf[50] = "Hi I am an EC client!";
 
-	int valread = -1;
+//	char *buf_char;
+//	int buf_int = 5000000;
+//	buf_char = (char*)&buf_int;
+
+//	int valread = -1;
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -174,15 +181,25 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 
-	tcp_send(sockfd_cli, buf, 50, MSG_DONTWAIT);
+//	tcp_send(sockfd_cli, buf, 50, MSG_DONTWAIT);
+//
+//	_ec_c->write(_ec_c->ec_cli, buf, 50, MSG_DONTWAIT);
+//
+//	_ec_c->read(_ec_c->ec_cli, buf, 50, 0);
 
-	valread = tcp_rcv(sockfd_cli, buf, 50, 0);
+//	buf_int = htonl(buf_int);
+//
+//	_ec_c->write(_ec_c->ec_cli, (void*)&buf_int, sizeof(buf_int), MSG_DONTWAIT);
+//	_ec_c->read(_ec_c->ec_cli, (void*)&buf_int, sizeof(buf_int), 0);
+//	printk(KERN_INFO "rx from server: %dns rt\n", ntohl(buf_int));
 
-	printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
+//	valread = tcp_rcv(sockfd_cli, buf, 50, 0);
+
+//	printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
 
 	//memcg -> ecc = _ec_c;
 
-	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
+//	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
 
 	return 0;
 }

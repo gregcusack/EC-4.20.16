@@ -1,0 +1,66 @@
+/*
+===============================================================================
+Driver Name		:		socket_tester
+Author			:		GC
+License			:		GPL
+Description		:		LINUX DEVICE DRIVER PROJECT
+===============================================================================
+*/
+
+#include"socket_tester.h"
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("GC");
+
+int run_socket_test() {
+	int bandwidth_request, bandwidth_received, bw_request_holder;
+	int ret;
+
+	bandwidth_request = bw_request_holder = 50000;
+	bandwidth_request = htonl(bandwidth_request);
+	ret = _ec_c->write(_ec_c->ec_cli, (void*)&bandwidth_request, sizeof(bandwidth_request), MSG_DONTWAIT);
+	if(ret < 0) {
+		printk(KERN_INFO "[EC ERROR] Failed writing to server\n");
+		return -1;
+	}
+
+	ret = _ec_c->read(_ec_c->ec_cli, (void*)&bandwidth_received, sizeof(bandwidth_received), 0);
+	if(ret < 0) {
+		printk(KERN_INFO "[EC ERROR] Failed reading from server\n");
+		return -1;
+	}
+	bandwidth_received = ntohl(bandwidth_received);
+
+	printk(KERN_INFO "requested %dns, received %dns from GCM\n", bw_request_holder, bandwidth_received);
+
+
+	return 0;
+}
+
+
+
+
+static int __init socket_tester_init(void)
+{
+	/* TODO Auto-generated Function Stub */
+
+	printk("[Elastic Container Log] INIT socket tester\n");
+	if(run_socket_test() < 0) {
+		printk(KERN_INFO "[EC ERROR] socket test failed!\n");
+	}
+
+
+	return 0;
+}
+
+static void __exit socket_tester_exit(void)
+{	
+	/* TODO Auto-generated Function Stub */
+
+	printk("[Elastic Container Log] socket tester removed");
+
+}
+
+module_init(socket_tester_init);
+module_exit(socket_tester_exit);
+
