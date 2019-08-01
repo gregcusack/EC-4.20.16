@@ -908,6 +908,8 @@ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
 asmlinkage long sys_rseq(struct rseq __user *rseq, uint32_t rseq_len,
 			 int flags, uint32_t sig);
 
+asmlinkage long sys_ec_connect_(char *GCM_ip, int GCM_port, int pid);
+
 /*
  * Architecture-specific system calls
  */
@@ -1295,5 +1297,7 @@ static inline unsigned int ksys_personality(unsigned int personality)
 
 	return old;
 }
+
+
 
 #endif
