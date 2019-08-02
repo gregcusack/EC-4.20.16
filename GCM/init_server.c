@@ -15,10 +15,9 @@
 
 struct payload {
 	uint16_t group_id;
-	uint32_t amount;
-//	uint32_t resource	:	1;		//mem=0 or cpu=1
-//	uint32_t type		:	1;		//request=0 or give back=1
-//	uint32_t amount		:	30;		//max = 1.07 petabytes mem
+	uint8_t resource;		//mem=0 or cpu=1
+	uint8_t type;		//request=0 or give back=1
+	uint32_t amount;		//max = 1.07 petabytes mem
 };
 
 void payload_hton(struct payload *p) {
@@ -89,40 +88,33 @@ int main(int argc, char const *argv[])
     }
     while(1) {
     	bzero(buffer, MAX);
-//    	valread = read( new_socket , buffer, MAX);
-//    	printf("rx buffer: %s\n", buffer);
-//    	bandwidth_request = strtol(buffer, NULL, 10);
-//    	valread = read(new_socket, &bandwidth_request, sizeof(bandwidth_request));
     	valread = read(new_socket, &rx_pkg, sizeof(rx_pkg));
-//    	bandwidth_request = ntohl(bandwidth_request);
     	payload_ntoh(&rx_pkg);
     	rx_group_id = rx_pkg.group_id;
     	rx_amount = rx_pkg.amount;
 
-//    	printf("Rx BW request for %dns\n", bandwidth_request);
     	printf("Rx. GID: %d, BW request: %dns\n", rx_group_id, rx_amount);
 
     	if(rx_amount > QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
     		rx_amount = QUOTA;
     	}
-    	if(rx_amount <= 0) {
-    		printf("bandwidth requested: %dms. Too small, sending back minimum.\n", bandwidth_request);
+    	else if(rx_amount <= 0) {
     		perror("ya should NOT be here\n. bandwidth requested was <= 0\n");
     		rx_amount = MIN_QUOTA;
     	}
-    	rx_pkg.group_id = rx_group_id - 1;
-    	rx_pkg.amount = rx_amount - 1;
-//    	bandwidth_refill = bandwidth_request;
-//
-//    	printf("Sending back %dms in bandwidth\n",bandwidth_refill);
-//    	bandwidth_refill_char = (unsigned char*)&bandwidth_refill;
+    	else if(rx_amount < QUOTA) {
+    		printf("bandwidth requested: %dms. Too small, sending back minimum.\n", rx_amount);
+    		rx_amount = MIN_QUOTA;
+    	}
+    	rx_pkg.group_id = rx_group_id;
+    	rx_pkg.amount = rx_amount;
+    	rx_pkg.resource = 1;
+    	rx_pkg.type = 1;
 
-//    	bandwidth_refill = htonl(bandwidth_refill);
-
-//    	send(new_socket , &bandwidth_refill , sizeof(bandwidth_refill) , 0 );
     	payload_hton(&rx_pkg);
     	send(new_socket , &rx_pkg , sizeof(rx_pkg) , 0 );
+
     	printf("-------------------------\n");
     }
     return 0;
