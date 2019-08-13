@@ -393,6 +393,10 @@ struct task_group {
 #endif
 
 	struct cfs_bandwidth	cfs_bandwidth;
+
+	/* EC components */
+	struct ec_connection*	ecc;
+	int 					is_ec; //0=not an EC, 1=is an EC
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
