@@ -97,17 +97,18 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 }
 
 
-int ec_connect(char* GCM_ip, int GCM_port, int pid) {
+int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
-	struct socket* sockfd_cli = NULL;
+	struct socket *sockfd_cli = NULL;
 
 //	struct ec_connection* _ec_c;
 
 	struct sockaddr_in saddr;
 
-	struct pid* task_in_cg_pid; //pid data structure for task in cgroup
+	struct pid *task_in_cg_pid; //pid data structure for task in cgroup
+	struct task_struct *tsk_in_cg; //task_struct for the task in cgroup
+	struct task_group *tg;
 
-	struct task_struct* tsk_in_cg; //task_struct for the task in cgroup
 
 	//struct mem_cgroup* memcg;
 
@@ -124,6 +125,26 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	if(!tsk_in_cg)
 		return __BADARG;
+
+	tg = tsk_in_cg->sched_task_group;
+	if(!tg) {
+		printk(KERN_ALERT "[ERROR] tg not found! exiting\n");
+		return __BADARG;
+	}
+
+	printk(KERN_INFO "tg->is_ec before set to ec (should be 0): %d\n", tg->is_ec);
+	if(tg->is_ec != 0) {
+		printk(KERN_ALERT "tg->is_ec never set! in tg creation!\n");
+		return __BADARG;
+	}
+
+	//set tg to be ec
+	tg->is_ec = 1;
+	printk(KERN_INFO "tg->is_ec after set (should be 1): %d\n", tg->is_ec);
+	if(tg->is_ec != 1) {
+		printk(KERN_ALERT "tg->is_ec is not 1! should be!\n");
+		return __BADARG;
+	}
 
 	//memcg = mem_cgroup_from_task(tsk_in_cg);
 
@@ -170,6 +191,8 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	_ec_c -> read = &tcp_rcv;
 
 	_ec_c -> ec_cli = sockfd_cli;
+
+	tg->ecc = _ec_c;
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 

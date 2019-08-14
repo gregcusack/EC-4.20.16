@@ -10148,6 +10148,12 @@ void init_tg_cfs_entry(struct task_group *tg, struct cfs_rq *cfs_rq,
 	/* guarantee group entities always have weight */
 	update_load_set(&se->load, NICE_0_LOAD);
 	se->parent = parent;
+
+	/* EC: Set tg->is_ec = 0 as default.
+	 * Will be set to 1 on ec syscall
+	 */
+	tg->is_ec = 0;
+
 }
 
 static DEFINE_MUTEX(shares_mutex);

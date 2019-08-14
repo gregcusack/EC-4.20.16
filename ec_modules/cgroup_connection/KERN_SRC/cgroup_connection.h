@@ -25,6 +25,7 @@
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
+#include "../kernel/sched/sched.h"
 
 #define __BADARG -1
 
