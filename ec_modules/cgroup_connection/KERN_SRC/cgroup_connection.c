@@ -108,6 +108,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct pid *task_in_cg_pid; //pid data structure for task in cgroup
 	struct task_struct *tsk_in_cg; //task_struct for the task in cgroup
 	struct task_group *tg;
+	struct cfs_bandwidth *cfs_b;
 
 
 	//struct mem_cgroup* memcg;
@@ -132,19 +133,21 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 		return __BADARG;
 	}
 
-	printk(KERN_INFO "tg->is_ec before set to ec (should be 0): %d\n", tg->is_ec);
-	if(tg->is_ec != 0) {
-		printk(KERN_ALERT "tg->is_ec never set! in tg creation!\n");
+	cfs_b = &tg->cfs_bandwidth;
+	if(!cfs_b) {
+		printk(KERN_ALERT "cfs_b error!\n");
 		return __BADARG;
 	}
 
-	//set tg to be ec
-	tg->is_ec = 1;
-	printk(KERN_INFO "tg->is_ec after set (should be 1): %d\n", tg->is_ec);
-	if(tg->is_ec != 1) {
-		printk(KERN_ALERT "tg->is_ec is not 1! should be!\n");
+	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
+	if(cfs_b->is_ec != 0) {
+		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
 		return __BADARG;
 	}
+
+	cfs_b->is_ec = 1;
+	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
+
 
 	//memcg = mem_cgroup_from_task(tsk_in_cg);
 
@@ -192,7 +195,11 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	_ec_c -> ec_cli = sockfd_cli;
 
-	tg->ecc = _ec_c;
+	cfs_b->ecc = _ec_c;
+	if(!cfs_b->ecc) {
+		printk(KERN_ALERT "ERROR setting cfs_b->ecc\n");
+		return __BADARG;
+	}
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 

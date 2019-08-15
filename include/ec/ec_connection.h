@@ -30,4 +30,21 @@ struct ec_connection {
 
 extern int (*ec_connect_)(char*, int, int);
 
+struct ec_payload {
+//	uint16_t group_id;
+	uint8_t resource;		//mem=0 or cpu=1
+//	uint8_t type;		//request=0 or give back=1
+	uint32_t amount;		//max = 1.07 petabytes mem
+};
+
+//void ec_payload_hton(struct ec_payload *p);// {
+//	p->group_id = htons(p->group_id);
+//	p->amount = htonl(p->amount);
+//}
+
+//void ec_payload_ntoh(struct ec_payload *p);// {
+//	p->group_id = ntohs(p->group_id);
+//	p->amount = ntohl(p->amount);
+//}
+
 #endif /* EC_CONNECTION_H_ */
