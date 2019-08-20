@@ -4258,17 +4258,17 @@ static inline u64 sched_cfs_bandwidth_slice(void)
 void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
-//	u32 ret;
-//	u64 ec_quota;
+	u32 ret;
+	u64 ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
 
 	now = sched_clock_cpu(smp_processor_id());
 	cfs_b->runtime = cfs_b->quota;
-/*	if(cfs_b->is_ec) {
+	/*if(cfs_b->is_ec) {
 		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (void*)&cfs_b->quota, \
-				sizeof(cfs_b->quota), MSG_DONTWAIT);
+				sizeof(cfs_b->quota), 0);
 		if(ret < 0) {
 			printk(KERN_ALERT "[EC ERROR] Failed writing to server\n");
 			//pass here for now??? idk
@@ -4279,7 +4279,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 			printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
 			ec_quota = cfs_b->quota; //not sure what we should have happen here
 		}
-		cfs_b->runtime = ec_quota;
+		cfs_b->runtime = cfs_b->quota;//ec_quota;
 	}
 	else {
 		cfs_b->runtime = cfs_b->quota;

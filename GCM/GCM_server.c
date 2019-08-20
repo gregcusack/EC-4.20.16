@@ -14,10 +14,11 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#define NUM_CORES 4
 #define PORT 4444
-#define PERIOD 1000000
-#define QUOTA 1000000
-#define MIN_QUOTA 5000
+#define PERIOD 100000000
+#define MAX_QUOTA (PERIOD * NUM_CORES)
+#define MIN_QUOTA 1000000
 #define MAX 32
 
 int main(int argc, char const *argv[])
@@ -81,18 +82,19 @@ int main(int argc, char const *argv[])
 
     	printf("BW request: %lu ns\n", bandwidth_request);
 
-    	if(bandwidth_request > QUOTA) {
+    	if(bandwidth_request > MAX_QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
-    		bandwidth_request = QUOTA;
+    		bandwidth_request = MAX_QUOTA;
     	}
     	else if(bandwidth_request <= 0) {
     		perror("ya should NOT be here\n. bandwidth requested was <= 0\n");
     		bandwidth_request = MIN_QUOTA;
     	}
-    	else if(bandwidth_request < QUOTA) {
+    	else if(bandwidth_request < MIN_QUOTA) {
     		printf("bandwidth requested: %lu ms. Too small, sending back minimum.\n", bandwidth_request);
     		bandwidth_request = MIN_QUOTA;
     	}
+    	bandwidth_request--;
 
     	send(new_socket , &bandwidth_request , sizeof(bandwidth_request) , 0 );
 

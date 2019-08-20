@@ -142,7 +142,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
 	if(cfs_b->is_ec != 0) {
 		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
-		return __BADARG;
+//		return __BADARG;
 	}
 
 	cfs_b->is_ec = 1;

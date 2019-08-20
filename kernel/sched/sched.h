@@ -355,7 +355,7 @@ struct cfs_bandwidth {
 	bool                    distribute_running;
 
 	/* EC -- is_ec flag */
-	struct ec_connection*	ecc;
+	struct ec_connection	*ecc;
 	int 					is_ec; //0=not an EC, 1=is an EC
 
 #endif
