@@ -30,6 +30,7 @@
 #include <linux/vmstat.h>
 #include <linux/writeback.h>
 #include <linux/page-flags.h>
+#include <ec/ec_connection.h>
 
 struct mem_cgroup;
 struct page;
@@ -287,6 +288,10 @@ struct mem_cgroup {
 	/* Legacy tcp memory accounting */
 	bool			tcpmem_active;
 	int			tcpmem_pressure;
+
+	struct ec_connection* ecc;
+	int ec_flag;
+	unsigned long ec_max;
 
 #ifdef CONFIG_MEMCG_KMEM
         /* Index in the kmem_cache->memcg_params.memcg_caches array */

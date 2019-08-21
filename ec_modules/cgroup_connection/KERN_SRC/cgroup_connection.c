@@ -106,7 +106,7 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	struct task_struct* tsk_in_cg; //task_struct for the task in cgroup
 
-	//struct mem_cgroup* memcg;
+	struct mem_cgroup* memcg;
 
 	int ret;
 
@@ -126,10 +126,10 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 	if(!tsk_in_cg)
 		return __BADARG;
 
-	//memcg = mem_cgroup_from_task(tsk_in_cg);
+	memcg = mem_cgroup_from_task(tsk_in_cg);
 
-	//if(!memcg)
-	//	return __BADARG;
+	if(!memcg)
+		return __BADARG;
 
 	if(!GCM_ip || !GCM_port) {
 
@@ -180,7 +180,11 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
 
-	//memcg -> ecc = _ec_c;
+	memcg -> ecc = _ec_c;
+
+	memcg -> ec_flag = 1;
+
+	memcg -> ec_max = 50000;
 
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
 
