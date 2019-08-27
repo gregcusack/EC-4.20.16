@@ -110,9 +110,9 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	int ret;
 
-	char buf[50] = "Hi I am an EC client!";
+//	char buf[50] = "Hi I am an EC client!";
 
-	int valread = -1;
+//	int valread = -1;
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -174,17 +174,19 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 
-	tcp_send(sockfd_cli, buf, 50, MSG_DONTWAIT);
+	//tcp_send(sockfd_cli, buf, 50, MSG_DONTWAIT);
 
-	valread = tcp_rcv(sockfd_cli, buf, 50, 0);
+	//valread = tcp_rcv(sockfd_cli, buf, 50, 0);
 
-	printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
+	//printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
 
 	memcg -> ecc = _ec_c;
 
 	memcg -> ec_flag = 1;
 
 	memcg -> ec_max = 50000;
+
+	//mem_cgroup_resize_max(memcg, 25000, false);
 
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
 

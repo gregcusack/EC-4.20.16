@@ -12,6 +12,7 @@
 #include <linux/sched.h>
 #include <linux/bug.h>
 #include <asm/page.h>
+#include <linux/memcontrol.h>
 
 static void propagate_protected_usage(struct page_counter *c,
 				      unsigned long usage)
@@ -120,6 +121,11 @@ bool page_counter_try_charge(struct page_counter *counter,
 		 */
 		new = atomic_long_add_return(nr_pages, &c->usage);
 		if (new > c->max) {
+			// if (container_of(counter, struct mem_cgroup, memory) -> ec_flag == 1)
+			// {
+			// 	printk(KERN_ALERT"[dbg] page_counter_try_charge: New usage exceeded the max mem limit!\n, new usage: %lu", new);
+			// }
+
 			atomic_long_sub(nr_pages, &c->usage);
 			propagate_protected_usage(counter, new);
 			/*
@@ -175,7 +181,8 @@ int page_counter_set_max(struct page_counter *counter, unsigned long nr_pages)
 	for (;;) {
 		unsigned long old;
 		long usage;
-
+		//struct mem_cgroup* memcg = container_of(counter, struct mem_cgroup, memory);
+		
 		/*
 		 * Update the limit while making sure that it's not
 		 * below the concurrently-changing counter value.
@@ -189,12 +196,12 @@ int page_counter_set_max(struct page_counter *counter, unsigned long nr_pages)
 		 */
 		usage = atomic_long_read(&counter->usage);
 
-		if (usage > nr_pages)
+		if ( usage > nr_pages )
 			return -EBUSY;
 
 		old = xchg(&counter->max, nr_pages);
 
-		if (atomic_long_read(&counter->usage) <= usage)
+		if ( atomic_long_read(&counter->usage) <= usage )
 			return 0;
 
 		counter->max = old;

@@ -402,6 +402,8 @@ struct mem_cgroup *mem_cgroup_from_task(struct task_struct *p);
 
 struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm);
 
+extern int mem_cgroup_resize_max(struct mem_cgroup* memcg, unsigned long max, bool memsw);
+
 struct mem_cgroup *get_mem_cgroup_from_page(struct page *page);
 
 static inline

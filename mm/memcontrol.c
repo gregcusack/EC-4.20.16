@@ -2172,6 +2172,8 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool drained = false;
 	bool oomed = false;
 	enum oom_status oom_status;
+	long new;
+	char ec_buff[20];
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2194,6 +2196,20 @@ retry:
 	if (batch > nr_pages) {
 		batch = nr_pages;
 		goto retry;
+	}
+
+	new = atomic_long_add_return(nr_pages, &((&memcg->memory)->usage) );
+	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
+		int rv = -1;
+		memcg -> ecc -> write(memcg -> ecc -> ec_cli, "update", 10, MSG_DONTWAIT);
+		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, ec_buff, 20, 0);
+		if (rv == 17)
+		{
+			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %d\n", rv);
+			mem_cgroup_resize_max(memcg, 50000, false);
+			memcg -> ec_flag = 2;
+			goto retry;
+		}
 	}
 
 	/*
@@ -2713,7 +2729,7 @@ static inline int mem_cgroup_move_swap_account(swp_entry_t entry,
 
 static DEFINE_MUTEX(memcg_max_mutex);
 
-static int mem_cgroup_resize_max(struct mem_cgroup *memcg,
+int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 				 unsigned long max, bool memsw)
 {
 	bool enlarge = false;
@@ -2766,6 +2782,7 @@ static int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 
 	return ret;
 }
+EXPORT_SYMBOL(mem_cgroup_resize_max);
 
 unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
 					    gfp_t gfp_mask,
