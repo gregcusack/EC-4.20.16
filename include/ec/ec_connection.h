@@ -26,6 +26,8 @@ struct ec_connection {
 
 	struct socket* ec_cli;
 
+	struct ec_payload* ec_payload;
+
 };
 
 extern int (*ec_connect_)(char*, int, int);
@@ -35,6 +37,9 @@ struct ec_payload {
 	uint8_t resource;		//mem=0 or cpu=1
 //	uint8_t type;		//request=0 or give back=1
 	uint32_t amount;		//max = 1.07 petabytes mem
+	uint32_t local_pid;
+	uint32_t global_pid;
+	uint32_t parent_global_pid;
 };
 
 //void ec_payload_hton(struct ec_payload *p);// {

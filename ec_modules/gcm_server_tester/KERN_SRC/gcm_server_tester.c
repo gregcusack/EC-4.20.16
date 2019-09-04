@@ -24,19 +24,37 @@ int run_socket_test() {
 //	pkg.type = 0;
 //	pkg.amount = 50000;
 
+	// Let's try to send a packet header here.. and have the server confirm that
+
+
 	i = 0;
 	bandwidth_request = 50000000;
+	printk(KERN_INFO "[EC DEBUG] Checking _ec_c to not have NULL ec_cli...\n");
+	if (_ec_c == NULL) {
+		printk(KERN_INFO "[EC DEBUG] EC CLI IS NULL \n");
+                return -1;
+	}
+	printk(KERN_INFO "[EC DEBUG] Starting Write to _ec_c...\n");
+	ret = _ec_c->write(_ec_c->ec_cli, (void*)&bandwidth_request, sizeof(bandwidth_request), MSG_DONTWAIT);
+	printk(KERN_INFO "[EC DEBUG] Return Code from writing: %d\n", ret);
+	/*
 	while(i < 100) {
 
 		//	bandwidth_request = bw_request_holder = 50000;
 		//	bandwidth_request = htonl(bandwidth_request);
 
+		printk(KERN_INFO "[EC DEBUG] Starting Write to _ec_c...\n");
+		if(_ec_c->ec_cli == NULL) {
+			printk(KERN_INFO "[EC DEBUG] EC CLI IS NULL \n");
+			return -1;
+		}
 		ret = _ec_c->write(_ec_c->ec_cli, (void*)&bandwidth_request, sizeof(bandwidth_request), MSG_DONTWAIT);
 		if(ret < 0) {
 		printk(KERN_INFO "[EC ERROR] Failed writing to server\n");
 		return -1;
 		}
 
+		printk(KERN_INFO "[EC DEBUG] Starting Read from _ec_c...\n");
 		ret = _ec_c->read(_ec_c->ec_cli, (void*)&bandwidth_rx, sizeof(bandwidth_rx), 0);
 		if(ret < 0) {
 		printk(KERN_INFO "[EC ERROR] Failed reading from server\n");
@@ -47,6 +65,7 @@ int run_socket_test() {
 		bandwidth_request--;
 		i++;
 	}
+	*/
 
 	return 0;
 }

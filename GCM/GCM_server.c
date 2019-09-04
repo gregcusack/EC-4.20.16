@@ -39,6 +39,7 @@ int main(int argc, char const *argv[])
     char *bandwidth_refill_char;
     uint16_t rx_group_id;
     uint32_t rx_amount;
+    uint64_t bandwidth_send_request = 500000;
 
     port = strtol(argv[1], NULL, 10);
     printf("server port: %d\n", port);
@@ -73,15 +74,31 @@ int main(int argc, char const *argv[])
         perror("accept");
         exit(EXIT_FAILURE);
     }
+
+    // here, we want to read a one time message from the client - i.e. Registration Process
+    int ret;
+    int local_pid;
+    ret = read(new_socket, &local_pid, sizeof(int));
+    printf("RET Value: %d\n", ret);
+    printf("Local PID VALUE: %d\n", local_pid);
+    int global_pid;
+    ret = read(new_socket, &global_pid, sizeof(int));
+    printf("RET Value: %d\n", ret);
+    printf("Global PID VALUE: %d\n", global_pid);
+    printf("Sending Confirmation of Container..\n");
+    send(new_socket , "Confirmed" , 10, 0 );
+
     while(1) {
-    	bzero(buffer, MAX);
+    	//bzero(buffer, MAX);
     	valread = read(new_socket, &bandwidth_request, sizeof(bandwidth_request));
 //    	payload_ntoh(&rx_pkg);
 //    	rx_group_id = rx_pkg.group_id;
 //    	rx_amount = rx_pkg.amount;
 
-    	printf("BW request: %lu ns\n", bandwidth_request);
+    	printf("Raw Data Request: %lu ns\n", bandwidth_request);
 
+	/*
+	printf("BW request: %lu ns\n", bandwidth_request);
     	if(bandwidth_request > MAX_QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
     		bandwidth_request = MAX_QUOTA;
@@ -95,9 +112,10 @@ int main(int argc, char const *argv[])
     		bandwidth_request = MIN_QUOTA;
     	}
     	bandwidth_request--;
-
+	printf("Sending bandwidth request %ld ... \n", bandwidth_request );
     	send(new_socket , &bandwidth_request , sizeof(bandwidth_request) , 0 );
-
+	*/
+	send(new_socket , &bandwidth_send_request , sizeof(bandwidth_send_request) , 0 );
     	printf("-------------------------\n");
     }
     return 0;

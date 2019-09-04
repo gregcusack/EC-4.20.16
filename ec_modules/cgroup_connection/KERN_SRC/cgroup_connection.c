@@ -29,8 +29,6 @@ u32 create_address(u8 *ip)
         return addr;
 }
 
-
-
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
 	struct msghdr msg;
@@ -52,6 +50,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 		vec.iov_base = (char*) buff + written;
 
 		len = kernel_sendmsg(sock, &msg, &vec, left, left);
+		printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
 		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN)))
 			goto repeat_send;
 
@@ -84,23 +83,52 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	msg.msg_flags = flags;
 	vec.iov_len = length;
 	vec.iov_base = str;
+	char databuf[1500];
+	struct cmsghdr *cmhdr;
+	unsigned char tos;
+
+	memset(databuf, 0, sizeof(databuf));
 
 	read_again:
-		len = kernel_recvmsg(sock, &msg, &vec, length, length, flags);
-
+		//printk(KERN_ALERT "[EC DEBUG] IN RECV LOOP\n");
+		//printk(KERN_ALERT "[EC DEBUG] Flags Value: %ld\n", flags);
+		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags | MSG_DONTWAIT));
+		//len = sock_recvmsg(sock, &msg, (flags));
+		//printk(KERN_ALERT "[EC DEBUG] Received Len Value: %d\n ", len);
+		/*if (len == -EAGAIN) {
+			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN\n ");
+		}
+		if (len == -ERESTARTSYS) {
+               	        printk(KERN_ALERT "[EC DEBUG] returned ERESTARTSYS\n ");
+			goto read_again;
+                }
+		*/
+		/*cmhdr = CMSG_FIRSTHDR(&msg);
+		while (cmhdr) {
+        		if (cmhdr->cmsg_level == IPPROTO_IP && cmhdr->cmsg_type == IP_TOS) {
+            			// read the TOS byte in the IP header
+            			tos = ((unsigned char *)CMSG_DATA(cmhdr))[0];
+        		}
+        		cmhdr = CMSG_NXTHDR(&msg, cmhdr);
+    		}
+		printk(KERN_ALERT "[EC DEBUG] RECV: %s\n", databuf);
+		/*
+		//printk(KERN_ALERT "[EC DEBUG] MSG: %s\n", vec);
+		/*
 		if (len == -EAGAIN || len == -ERESTARTSYS){
 			printk(KERN_INFO"[EC EROOR] Elastic Container encountered an error while reading from socket!\n");
 			goto read_again;
-		}
+		}*/
 
-	return len == length ? 0:len;
+	//return len == length ? 0:len;
+	return 0;
 }
 
 
 int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	struct socket *sockfd_cli = NULL;
-
+	struct ec_payload ec_info;
 //	struct ec_connection* _ec_c;
 
 	struct sockaddr_in saddr;
@@ -111,9 +139,13 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct cfs_bandwidth *cfs_b;
 
 
+	int global_pid = 1;
+	char server_response[32] = {0};
 	//struct mem_cgroup* memcg;
 
 	int ret;
+
+	//pritnk(KERN_INFO "Parent Flag: %d\n", parent_flag);
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -163,8 +195,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	ret = -1;
 
-	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
-
+	//ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	if(ret < 0){
 
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
@@ -176,9 +208,9 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
-	saddr.sin_addr.s_addr = in_aton(GCM_ip);
+	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR);
+	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR| O_NONBLOCK);
 
 	if(ret && (ret != -EINPROGRESS)){
 
@@ -186,6 +218,10 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 		return ret;
 	}
+
+	// Here, we want to initialize the ec_payload;
+	printk(KERN_ALERT"[EC LOG] Creating Payload!\n");
+	ec_info = (struct ec_payload) {0,50000, pid, global_pid};
 
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 
@@ -195,11 +231,27 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	_ec_c -> ec_cli = sockfd_cli;
 
+	_ec_c -> ec_payload = &ec_info;
+
 	cfs_b->ecc = _ec_c;
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
+
+	// Here, we want to also send a one time message to the server to "register" this container in the GCM
+
+	printk(KERN_INFO "[EC LOG SETUP] Sending Local PID to Server\n");
+	_ec_c -> write(_ec_c->ec_cli, (void*)&_ec_c->ec_payload->local_pid, sizeof(int), MSG_DONTWAIT);
+
+	printk(KERN_INFO "[EC LOG SETUP] Sending Global PID to Server\n");
+
+        _ec_c -> write(_ec_c->ec_cli, (void*)&_ec_c->ec_payload->global_pid, sizeof(int), MSG_DONTWAIT);
+
+	printk(KERN_INFO "[EC LOG SETUP] Receiving Ack from Server\n");
+	
+	_ec_c -> read(_ec_c->ec_cli, (void *)&server_response, sizeof(server_response), 0);
+	printk(KERN_INFO "[EC LOG SETUP] Received Ack from Server: %s\n", server_response);
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 
