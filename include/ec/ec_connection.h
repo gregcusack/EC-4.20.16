@@ -14,9 +14,17 @@
 #include <linux/socket.h>
 #include <linux/net.h>
 #include <linux/inet.h>
-//#include <net/sock.h>
 #include <linux/memcontrol.h>
 
+typedef struct ec_msg {
+
+	int cgroup_id;
+
+	int is_mem;
+
+	unsigned long mem_limit;
+
+} ec_message_t;
 
 struct ec_connection {
 

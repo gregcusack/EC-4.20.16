@@ -1385,6 +1385,7 @@ static bool mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	mutex_lock(&oom_lock);
 	ret = out_of_memory(&oc);
 	mutex_unlock(&oom_lock);
+	
 	return ret;
 }
 
@@ -2172,8 +2173,8 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool drained = false;
 	bool oomed = false;
 	enum oom_status oom_status;
-	long new;
-	char ec_buff[20];
+	unsigned long new;
+	ec_message_t* mem_req;
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2198,18 +2199,30 @@ retry:
 		goto retry;
 	}
 
-	new = atomic_long_add_return(nr_pages, &((&memcg->memory)->usage) );
+	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
+	
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
+		
+		unsigned long new_max;
 		int rv = -1;
-		memcg -> ecc -> write(memcg -> ecc -> ec_cli, "update", 10, MSG_DONTWAIT);
-		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, ec_buff, 20, 0);
-		if (rv == 17)
+
+		mem_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+		mem_req -> is_mem = 1;
+		mem_req -> cgroup_id = memcg->id.id;
+		mem_req -> mem_limit = mem_cgroup_get_max(memcg);
+		
+		memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
+		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
+
+		if ( (rv > 0) && (new_max > mem_req->mem_limit) ) 
 		{
-			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %d\n", rv);
-			mem_cgroup_resize_max(memcg, 50000, false);
-			memcg -> ec_flag = 2;
+			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
+			mem_cgroup_resize_max(memcg, new_max, false);
+			kfree(mem_req);
 			goto retry;
 		}
+		//else
+		//	printk(KERN_ALERT"[dbg] tray_charge: This is why we did not charge max. new_max: %lu and previous memory max: %lu\n", new_max, mem_req -> mem_limit);
 	}
 
 	/*

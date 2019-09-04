@@ -86,7 +86,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, flags);
 
 		if (len == -EAGAIN || len == -ERESTARTSYS){
-			printk(KERN_INFO"[EC EROOR] Elastic Container encountered an error while reading from socket!\n");
+			//printk(KERN_INFO"[EC ERROR] Elastic Container encountered an error while reading from socket! Error: %d\n", len);
 			goto read_again;
 		}
 
@@ -110,9 +110,6 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	int ret;
 
-//	char buf[50] = "Hi I am an EC client!";
-
-//	int valread = -1;
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -184,7 +181,7 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	memcg -> ec_flag = 1;
 
-	memcg -> ec_max = 50000;
+	memcg -> ec_max = 0;
 
 	//mem_cgroup_resize_max(memcg, 25000, false);
 
