@@ -95,9 +95,8 @@ int main(int argc, char const *argv[])
 //    	rx_group_id = rx_pkg.group_id;
 //    	rx_amount = rx_pkg.amount;
 
-    	printf("Raw Data Request: %lu ns\n", bandwidth_request);
+    	//printf("Raw Data Request: %lu ns\n", bandwidth_request);
 
-	/*
 	printf("BW request: %lu ns\n", bandwidth_request);
     	if(bandwidth_request > MAX_QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
@@ -114,8 +113,8 @@ int main(int argc, char const *argv[])
     	bandwidth_request--;
 	printf("Sending bandwidth request %ld ... \n", bandwidth_request );
     	send(new_socket , &bandwidth_request , sizeof(bandwidth_request) , 0 );
-	*/
-	send(new_socket , &bandwidth_send_request , sizeof(bandwidth_send_request) , 0 );
+
+	//send(new_socket , &bandwidth_send_request , sizeof(bandwidth_send_request) , 0 );
     	printf("-------------------------\n");
     }
     return 0;

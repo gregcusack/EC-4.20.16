@@ -90,19 +90,17 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	memset(databuf, 0, sizeof(databuf));
 
 	read_again:
-		//printk(KERN_ALERT "[EC DEBUG] IN RECV LOOP\n");
-		//printk(KERN_ALERT "[EC DEBUG] Flags Value: %ld\n", flags);
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags | MSG_DONTWAIT));
-		//len = sock_recvmsg(sock, &msg, (flags));
-		//printk(KERN_ALERT "[EC DEBUG] Received Len Value: %d\n ", len);
-		/*if (len == -EAGAIN) {
+		//len = kernel_recv(sock, databuf, length, ());
+		if (len == -EAGAIN) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN\n ");
 		}
 		if (len == -ERESTARTSYS) {
                	        printk(KERN_ALERT "[EC DEBUG] returned ERESTARTSYS\n ");
-			goto read_again;
+			//goto read_again;
                 }
-		*/
+		printk(KERN_ALERT "[EC DEBUG] Received Len Value: %d\n ", len);
+		//printk(KERN_ALERT "[EC DEBUG] Received value: %s\n", msg);
 		/*cmhdr = CMSG_FIRSTHDR(&msg);
 		while (cmhdr) {
         		if (cmhdr->cmsg_level == IPPROTO_IP && cmhdr->cmsg_type == IP_TOS) {
@@ -111,14 +109,8 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
         		}
         		cmhdr = CMSG_NXTHDR(&msg, cmhdr);
     		}
-		printk(KERN_ALERT "[EC DEBUG] RECV: %s\n", databuf);
-		/*
-		//printk(KERN_ALERT "[EC DEBUG] MSG: %s\n", vec);
-		/*
-		if (len == -EAGAIN || len == -ERESTARTSYS){
-			printk(KERN_INFO"[EC EROOR] Elastic Container encountered an error while reading from socket!\n");
-			goto read_again;
-		}*/
+		printk(KERN_ALERT "[EC DEBUG] RECV: %s\n", cmhdr);
+		*/
 
 	//return len == length ? 0:len;
 	return 0;
@@ -127,6 +119,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
+	printk(KERN_ALERT "[EC DEBUG] IN EC_CONNECT\n");
 	struct socket *sockfd_cli = NULL;
 	struct ec_payload ec_info;
 //	struct ec_connection* _ec_c;
@@ -249,7 +242,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
         _ec_c -> write(_ec_c->ec_cli, (void*)&_ec_c->ec_payload->global_pid, sizeof(int), MSG_DONTWAIT);
 
 	printk(KERN_INFO "[EC LOG SETUP] Receiving Ack from Server\n");
-	
+
 	_ec_c -> read(_ec_c->ec_cli, (void *)&server_response, sizeof(server_response), 0);
 	printk(KERN_INFO "[EC LOG SETUP] Received Ack from Server: %s\n", server_response);
 
