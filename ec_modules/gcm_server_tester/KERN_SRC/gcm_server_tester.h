@@ -1,5 +1,5 @@
 
-#define DRIVER_NAME "cgroup_connection"
+#define DRIVER_NAME "gcm_server_tester"
 #define PDEBUG(fmt,args...) printk(KERN_DEBUG"%s:"fmt,DRIVER_NAME, ##args)
 #define PERR(fmt,args...) printk(KERN_ERR"%s:"fmt,DRIVER_NAME,##args)
 #define PINFO(fmt,args...) printk(KERN_INFO"%s:"fmt,DRIVER_NAME, ##args)
@@ -25,15 +25,8 @@
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
-#include "../kernel/sched/sched.h"
 
-#define __BADARG -1
+extern struct ec_connection *_ec_c;
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("MAZIYAR NAZARI");
+int run_socket_test(void);
 
-int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
-int tcp_rcv(struct socket* sock, char* str, int max_size, unsigned long flags);
-
-//Global Cloud Manager ip & port must be passed to the ec_connect
-int ec_connect(char* GCM_ip, int GCM_port, int pid);

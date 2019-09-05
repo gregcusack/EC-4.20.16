@@ -4258,12 +4258,38 @@ static inline u64 sched_cfs_bandwidth_slice(void)
 void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
+	u32 ret;
+	u64 ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
 
 	now = sched_clock_cpu(smp_processor_id());
 	cfs_b->runtime = cfs_b->quota;
+	// This logic is only for an "elastic" container..
+	if(cfs_b->is_ec) {
+		//Just Test whether we can write something to a server...
+		printk(KERN_ALERT "[EC DEBUG] Writing to Server...\n");
+		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (void*)&cfs_b->quota, \
+				sizeof(cfs_b->quota), MSG_DONTWAIT);
+		if(ret < 0) {
+			printk(KERN_ALERT "[EC ERROR] Failed writing to server\n");
+			//pass here for now??? idk
+		}
+		printk(KERN_ALERT "[EC DEBUG] Reading a response from server...\n");
+		
+		ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota,
+				sizeof(ec_quota), 0);
+		if(ret < 0) {
+			printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
+			ec_quota = cfs_b->quota; //not sure what we should have happen here
+		}
+		
+		cfs_b->runtime = cfs_b->quota;//ec_quota;
+	}
+	else {
+		cfs_b->runtime = cfs_b->quota;
+	}
 	cfs_b->runtime_expires = now + ktime_to_ns(cfs_b->period);
 	cfs_b->expires_seq++;
 }
@@ -4884,6 +4910,10 @@ void init_cfs_bandwidth(struct cfs_bandwidth *cfs_b)
 	hrtimer_init(&cfs_b->slack_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	cfs_b->slack_timer.function = sched_cfs_slack_timer;
 	cfs_b->distribute_running = 0;
+
+	/* EC */
+	cfs_b->ecc = NULL;
+	cfs_b->is_ec = 0;
 }
 
 static void init_cfs_rq_runtime(struct cfs_rq *cfs_rq)
@@ -10148,6 +10178,10 @@ void init_tg_cfs_entry(struct task_group *tg, struct cfs_rq *cfs_rq,
 	/* guarantee group entities always have weight */
 	update_load_set(&se->load, NICE_0_LOAD);
 	se->parent = parent;
+
+	/* EC access is_ec through tg as well */
+//	tg->is_ec = tg->cfs_bandwidth.is_ec;
+
 }
 
 static DEFINE_MUTEX(shares_mutex);
