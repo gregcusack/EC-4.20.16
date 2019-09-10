@@ -16,7 +16,7 @@
 
 #define true 1
 #define false 0
-#define __PORT__ 4445
+#define __PORT__ 4444
 #define __MAX_CLIENT__ 30
 #define __BUFFSIZE__ 16
 #define __FAILED__ -1
@@ -25,6 +25,7 @@
 
 unsigned long memory_limit = 30000;
 unsigned long mem_reqs = 0;
+unsigned long cpu_limit = 500000;
 
 typedef int _bool;
 
@@ -38,12 +39,11 @@ typedef struct gcm_server {
 } gcm_server_t;
 
 typedef struct ec_msg {
-
-	int cgroup_id;
-
-	_bool is_mem;
-
-	unsigned long mem_limit;
+	uint32_t client_ip;
+        uint32_t cgroup_id;
+        _bool is_mem;
+        uint64_t rsrc_amnt;
+        _bool request;
 
 } ec_message_t;
 
@@ -55,6 +55,6 @@ gcm_server_t* create_mt_server();
 
 unsigned long handle_mem_req(ec_message_t* req);
 
-unsigned long handle_mem_req(ec_message_t* req);
+unsigned long handle_cpu_req(ec_message_t* req);
 
 #endif

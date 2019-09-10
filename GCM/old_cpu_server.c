@@ -78,26 +78,28 @@ int main(int argc, char const *argv[])
     // here, we want to read a one time message from the client - i.e. Registration Process
     int ret;
     int local_pid;
-    ret = read(new_socket, &local_pid, sizeof(int));
-    printf("RET Value: %d\n", ret);
-    printf("Local PID VALUE: %d\n", local_pid);
-    int global_pid;
-    ret = read(new_socket, &global_pid, sizeof(int));
-    printf("RET Value: %d\n", ret);
-    printf("Global PID VALUE: %d\n", global_pid);
-    printf("Sending Confirmation of Container..\n");
-    send(new_socket , "Confirmed" , 10, 0 );
+    //ret = read(new_socket, &local_pid, sizeof(int));
+    //printf("RET Value: %d\n", ret);
+    //printf("Local PID VALUE: %d\n", local_pid);
+    //int global_pid;
+    //ret = read(new_socket, &global_pid, sizeof(int));
+    //printf("RET Value: %d\n", ret);
+    //printf("Global PID VALUE: %d\n", global_pid);
+    //printf("Sending Confirmation of Container..\n");
+    //send(new_socket , "Confirmed" , 10, 0 );
+
+    char buffer_read[1024];
 
     while(1) {
     	//bzero(buffer, MAX);
-    	valread = read(new_socket, &bandwidth_request, sizeof(bandwidth_request));
+    	valread = read(new_socket, buffer, 1024);
 //    	payload_ntoh(&rx_pkg);
 //    	rx_group_id = rx_pkg.group_id;
 //    	rx_amount = rx_pkg.amount;
 
-    	//printf("Raw Data Request: %lu ns\n", bandwidth_request);
+    	printf("Raw Data Request: %s\n", buffer);
 
-	printf("BW request: %lu ns\n", bandwidth_request);
+	/*printf("BW request: %lu ns\n", bandwidth_request);
     	if(bandwidth_request > MAX_QUOTA) {
     		printf("bandwidth requested exceeds allowable quota. sending back quota ms\n");
     		bandwidth_request = MAX_QUOTA;
@@ -113,7 +115,7 @@ int main(int argc, char const *argv[])
     	bandwidth_request--;
 	printf("Sending bandwidth request %ld ... \n", bandwidth_request );
     	send(new_socket , &bandwidth_request , sizeof(bandwidth_request) , 0 );
-
+	*/
 	//send(new_socket , &bandwidth_send_request , sizeof(bandwidth_send_request) , 0 );
     	printf("-------------------------\n");
     }

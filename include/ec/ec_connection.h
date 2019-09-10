@@ -17,12 +17,11 @@
 #include <linux/memcontrol.h>
 
 typedef struct ec_msg {
-
-	int cgroup_id;
-
+	uint32_t client_ip;
+	uint32_t cgroup_id;
 	int is_mem;
-
-	unsigned long mem_limit;
+	uint64_t rsrc_amnt;
+	int request;
 
 } ec_message_t;
 

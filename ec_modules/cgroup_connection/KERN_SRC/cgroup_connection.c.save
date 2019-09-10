@@ -29,6 +29,8 @@ u32 create_address(u8 *ip)
         return addr;
 }
 
+
+
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
 	struct msghdr msg;
@@ -50,11 +52,8 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 		vec.iov_base = (char*) buff + written;
 
 		len = kernel_sendmsg(sock, &msg, &vec, left, left);
-		//printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
-		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN))) {
-			printk(KERN_ALERT "Error in sending message in Kernel Module\n");
-			//goto repeat_send;
-		}
+		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN)))
+			goto repeat_send;
 
 		if(len > 0){
 
@@ -87,12 +86,13 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	vec.iov_base = str;
 
 	read_again:
-		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags | MSG_DONTWAIT));
-		//len = kernel_recv(sock, databuf, length, ());
-		if (len == -EAGAIN || len == -ERESTARTSYS) {
-			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
-			//goto read_again;
+		len = kernel_recvmsg(sock, &msg, &vec, length, length, flags);
+
+		if (len == -EAGAIN || len == -ERESTARTSYS){
+			printk(KERN_INFO"[EC EROOR] Elastic Container encountered an error while reading from socket!\n");
+			goto read_again;
 		}
+
 	return len == length ? 0:len;
 }
 
@@ -110,7 +110,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 
-	struct mem_cgroup* memcg;
+
+	//struct mem_cgroup* memcg;
 
 	int ret;
 
@@ -126,7 +127,6 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	if(!tsk_in_cg)
 		return __BADARG;
 
-	memcg = mem_cgroup_from_task(tsk_in_cg);
 	tg = tsk_in_cg->sched_task_group;
 	if(!tg) {
 		printk(KERN_ALERT "[ERROR] tg not found! exiting\n");
@@ -149,8 +149,10 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
 
-	if(!memcg)
-		return __BADARG;
+	//memcg = mem_cgroup_from_task(tsk_in_cg);
+
+	//if(!memcg)
+	//	return __BADARG;
 
 	if(!GCM_ip || !GCM_port) {
 
@@ -161,8 +163,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	ret = -1;
 
-//	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
-	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+
 	if(ret < 0){
 
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
@@ -175,9 +177,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
 	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-//	saddr.sin_addr.s_addr = in_aton(GCM_ip);
 
-	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR | O_NONBLOCK);
+	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR);
 
 	if(ret && (ret != -EINPROGRESS)){
 
@@ -194,23 +195,13 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	_ec_c -> ec_cli = sockfd_cli;
 
-	printk(KERN_INFO"[Success] connection established to the server!\n");
-
 	cfs_b->ecc = _ec_c;
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
 
-	printk(KERN_INFO"[Success] cfb_b successfully connected to ec_c!\n");
-
-	memcg -> ecc = _ec_c;
-
-	memcg -> ec_flag = 1;
-
-	memcg -> ec_max = 0;
-
-	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
+	printk(KERN_INFO"[Success] connection established to the server!\n");
 
 	return 0;
 }

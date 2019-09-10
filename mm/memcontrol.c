@@ -2209,12 +2209,13 @@ retry:
 		mem_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 		mem_req -> is_mem = 1;
 		mem_req -> cgroup_id = memcg->id.id;
-		mem_req -> mem_limit = mem_cgroup_get_max(memcg);
+		mem_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
+		mem_req -> request = 1;
 		
 		memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
 		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
 
-		if ( (rv > 0) && (new_max > mem_req->mem_limit) ) 
+		if ( (rv > 0) && (new_max > mem_req->rsrc_amnt) ) 
 		{
 			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
 			mem_cgroup_resize_max(memcg, new_max, false);

@@ -4258,8 +4258,10 @@ static inline u64 sched_cfs_bandwidth_slice(void)
 void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
-	u32 ret;
-	u64 ec_quota;
+	unsigned long ret;
+	unsigned long ec_quota;
+	ec_message_t* cpu_req;
+	//u64 ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
@@ -4268,23 +4270,40 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 	cfs_b->runtime = cfs_b->quota;
 	// This logic is only for an "elastic" container..
 	if(cfs_b->is_ec) {
-		//Just Test whether we can write something to a server...
-		printk(KERN_ALERT "[EC DEBUG] Writing to Server...\n");
-		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (void*)&cfs_b->quota, \
-				sizeof(cfs_b->quota), MSG_DONTWAIT);
+		// just testing if we can send a cpu_req to server
+		printk(KERN_ALERT "[EC DEBUG] IN CPU REQUEST: Writing to Server...\n");
+		cpu_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+		cpu_req -> is_mem = 0;
+		cpu_req -> cgroup_id = 0;
+		cpu_req -> rsrc_amnt = cfs_b->quota;
+		cpu_req -> request = 1;
+
+		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)cpu_req, \
+				sizeof(ec_message_t), MSG_DONTWAIT);
 		if(ret < 0) {
 			printk(KERN_ALERT "[EC ERROR] Failed writing to server\n");
 			//pass here for now??? idk
+		} else {
+			printk(KERN_ALERT "[EC DEBUG] Write length returned: %lu\n", ret);
 		}
-		printk(KERN_ALERT "[EC DEBUG] Reading a response from server...\n");
+
+		//ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota,
+		//		sizeof(ec_quota), 0);
 		
-		ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota,
-				sizeof(ec_quota), 0);
+		/*ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (char*)&ec_quota, \
+				sizeof(unsigned long) +1, 0);
+
+		printk(KERN_ALERT "[EC DEBUG] Read from Server of length: %d\n", ret);
+
 		if(ret < 0) {
 			printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
 			ec_quota = cfs_b->quota; //not sure what we should have happen here
 		}
-		
+		if (ret > 0) {
+			printk(KERN_ALERT "[EC DEBUG] SUCCESSFULLY READ FROM SERVER\n");
+			kfree(cpu_req);
+		}
+		*/
 		cfs_b->runtime = cfs_b->quota;//ec_quota;
 	}
 	else {
