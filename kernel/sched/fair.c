@@ -4261,7 +4261,6 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 	unsigned long ret;
 	unsigned long ec_quota;
 	ec_message_t* cpu_req;
-	//u64 ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
@@ -4290,11 +4289,12 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 		//ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota,
 		//		sizeof(ec_quota), 0);
 		
-		/*ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (char*)&ec_quota, \
-				sizeof(unsigned long) +1, 0);
+		ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota, \
+				sizeof(ec_quota), 0);
 
-		printk(KERN_ALERT "[EC DEBUG] Read from Server of length: %d\n", ret);
-
+		printk(KERN_ALERT "[EC DEBUG] Read from Server of length: %ld\n", ret);
+		printk(KERN_ALERT "[EC DEBUG] Read data from Server: %ld", ec_quota);
+		/*
 		if(ret < 0) {
 			printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
 			ec_quota = cfs_b->quota; //not sure what we should have happen here
@@ -4302,8 +4302,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 		if (ret > 0) {
 			printk(KERN_ALERT "[EC DEBUG] SUCCESSFULLY READ FROM SERVER\n");
 			kfree(cpu_req);
-		}
-		*/
+		}*/
 		cfs_b->runtime = cfs_b->quota;//ec_quota;
 	}
 	else {

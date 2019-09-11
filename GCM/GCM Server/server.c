@@ -70,6 +70,7 @@ unsigned long handle_req(char* buffer) {
 		case false:
 			printf("[dbg] Handling cpu stuff\n");
 			ret = handle_cpu_req(req);
+			printf("[dbg] Return CPU Request: %ld\n", ret);
 			break;
 
 		default:
