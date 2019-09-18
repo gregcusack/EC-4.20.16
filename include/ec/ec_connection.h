@@ -8,7 +8,7 @@
 #ifndef EC_CONNECTION_H_
 #define EC_CONNECTION_H_
 
-
+//#include "../../kernel/sched/sched.h"
 #include <linux/types.h>
 #include <linux/sched.h>
 #include <linux/socket.h>
@@ -20,10 +20,12 @@ typedef struct ec_msg {
 	uint32_t client_ip;
 	uint32_t cgroup_id;
 	int is_mem;
-	uint64_t rsrc_amnt;
+	unsigned long rsrc_amnt;
 	int request;
 
 } ec_message_t;
+
+struct cfs_bandwidth;
 
 struct ec_connection {
 
@@ -31,10 +33,9 @@ struct ec_connection {
 
 	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
 
+	int (*request_cpu)(struct cfs_bandwidth* cfs_b);
+
 	struct socket* ec_cli;
-
-//	struct ec_payload* ec_payload;
-
 };
 
 extern int (*ec_connect_)(char*, int, int);

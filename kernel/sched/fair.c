@@ -4259,8 +4259,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
 	unsigned long ret;
-	unsigned long ec_quota;
-	ec_message_t* cpu_req;
+	//unsigned long ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
@@ -4269,41 +4268,41 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 	cfs_b->runtime = cfs_b->quota;
 	// This logic is only for an "elastic" container..
 	if(cfs_b->is_ec) {
-		// just testing if we can send a cpu_req to server
-		printk(KERN_ALERT "[EC DEBUG] IN CPU REQUEST: Writing to Server...\n");
-		cpu_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-		cpu_req -> is_mem = 0;
-		cpu_req -> cgroup_id = 0;
-		cpu_req -> rsrc_amnt = cfs_b->quota;
-		cpu_req -> request = 1;
-
-		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)cpu_req, \
-				sizeof(ec_message_t), MSG_DONTWAIT);
-		if(ret < 0) {
-			printk(KERN_ALERT "[EC ERROR] Failed writing to server\n");
-			//pass here for now??? idk
-		} else {
-			printk(KERN_ALERT "[EC DEBUG] Write length returned: %lu\n", ret);
+		ret = cfs_b->ecc->request_cpu(cfs_b);
+		if (ret < 0) {
+			printk(KERN_ALERT "[ECC DBG] __refill_cfs: EC cpu request function returned error %ld..\n", ret);
 		}
+		// Here, let's just add a function pointer to send the cpu request package 
 
-		//ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota,
-		//		sizeof(ec_quota), 0);
-		
-		ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota, \
-				sizeof(ec_quota), 0);
+		// cpu_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+		// cpu_req -> is_mem = 0;
+		// cpu_req -> cgroup_id = cfs_b->parent_tg->css.id;
+		// cpu_req -> rsrc_amnt = 1000; // this is arbitary
+		// cpu_req -> request = 1;
 
-		printk(KERN_ALERT "[EC DEBUG] Read from Server of length: %ld\n", ret);
-		printk(KERN_ALERT "[EC DEBUG] Read data from Server: %ld", ec_quota);
-		/*
-		if(ret < 0) {
-			printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
-			ec_quota = cfs_b->quota; //not sure what we should have happen here
-		}
-		if (ret > 0) {
-			printk(KERN_ALERT "[EC DEBUG] SUCCESSFULLY READ FROM SERVER\n");
-			kfree(cpu_req);
-		}*/
-		cfs_b->runtime = cfs_b->quota;//ec_quota;
+		// printk(KERN_ALERT "[dbg] __refill_cfs: Requesting runtime: %ld\n", cpu_req -> rsrc_amnt);
+		// printk(KERN_ALERT "[dbg] __refill_cfs: CGroup ID: %d\n", cpu_req -> cgroup_id);
+		// ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)cpu_req, \
+		// 		sizeof(ec_message_t) + 1, MSG_DONTWAIT);
+		// if(ret < 0) {
+		// 	printk(KERN_ALERT "[EC ERROR] Failed writing to server\n");
+		// 	//pass here for now??? idk
+		// }
+
+		// /*ret = cfs_b->ecc->read(cfs_b->ecc->ec_cli, (void*)&ec_quota, \
+		// 		sizeof(ec_quota), 0);
+
+		// printk(KERN_ALERT "[dbg] __refill_cfs: Returned runtime: %ld", ec_quota);
+
+		// if(ret < 0) {
+		// 	printk(KERN_ALERT "[EC ERROR] Failed reading from server\n");
+		// 	ec_quota = cfs_b->quota; //not sure what we should have happen here
+		// } else {
+		// 	kfree(cpu_req);
+		// }*/
+		// kfree(cpu_req);
+
+		// cfs_b->runtime = cfs_b->quota;//ec_quota;
 	}
 	else {
 		cfs_b->runtime = cfs_b->quota;

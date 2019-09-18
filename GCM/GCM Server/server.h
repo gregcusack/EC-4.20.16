@@ -42,7 +42,7 @@ typedef struct ec_msg {
 	uint32_t client_ip;
         uint32_t cgroup_id;
         _bool is_mem;
-        uint64_t rsrc_amnt;
+        unsigned long rsrc_amnt;
         _bool request;
 
 } ec_message_t;

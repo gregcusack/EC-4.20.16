@@ -2211,6 +2211,8 @@ retry:
 		mem_req -> cgroup_id = memcg->id.id;
 		mem_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
 		mem_req -> request = 1;
+
+		printk(KERN_ALERT "[dbg] try_charge: Sending a request to server...\n");
 		
 		memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
 		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);

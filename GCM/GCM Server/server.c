@@ -33,10 +33,14 @@ unsigned long handle_cpu_req(ec_message_t* req) {
 	unsigned long fail = 1;
 	pthread_mutex_t cpulock = PTHREAD_MUTEX_INITIALIZER;
 
-        if (req -> is_mem)
+        if (req -> is_mem) {
+		printf("[dbg] IN CPU handler but is mem.. hmm? returning\n");
                 return __FAILED__;
+	}
 
-        if (cpu_limit > 0)
+	printf("[dbg] cgroup id: %d\n", req->cgroup_id);
+
+	if (cpu_limit > 0)
         {
                 pthread_mutex_lock(&cpulock);
 
@@ -46,7 +50,8 @@ unsigned long handle_cpu_req(ec_message_t* req) {
 
                 pthread_mutex_unlock(&cpulock);
 
-                return req->rsrc_amnt + ret;
+		printf("[dbg] CPU Client request: %ld\n", req -> rsrc_amnt + ret );
+                return ret;
 
         }
         else 
@@ -63,14 +68,14 @@ unsigned long handle_req(char* buffer) {
 	switch ( req -> is_mem ) {
 
 		case true:
-			printf("[dbg] Handling mem stuff\n");
+//			printf("[dbg] Handling mem stuff\n");
 			ret = handle_mem_req(req);
 			break;
 
 		case false:
 			printf("[dbg] Handling cpu stuff\n");
 			ret = handle_cpu_req(req);
-			printf("[dbg] Return CPU Request: %ld\n", ret);
+//			printf("[dbg] Return CPU Request: %ld\n", ret);
 			break;
 
 		default:
@@ -95,8 +100,8 @@ void *handle_client_reqs(void* clifd) {
 		ret = 0;
 		printf("[dbg] Number of bytes read: %d\n", num_bytes);
 		ret = handle_req(buffer);
-		printf("[dbg] handle request return value: %ld\n", ret);
-		if (ret > 0)
+		
+		/*if (ret > 0)
 		{
 			//printf("[dbg] We got the new max! It's time to send!\n");
 			if(write(client_fd, (const char*) &ret,  sizeof(unsigned long) ) < 0){
@@ -112,7 +117,8 @@ void *handle_client_reqs(void* clifd) {
 				break;
 			}
 			break;
-		}
+		}*/
+		bzero(buffer, __BUFFSIZE__);
 	}
 
 		//maybe we should do some more things here

@@ -96,6 +96,34 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	return len == length ? 0:len;
 }
 
+int request_cpu(struct cfs_bandwidth *cfs_b){
+	printk(KERN_ALERT "[EC DEBUG] Requesting cpu function...\n");
+
+	ec_message_t* cpu_req;
+	unsigned long ret;
+
+	cpu_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	cpu_req -> is_mem = 0;
+	cpu_req -> cgroup_id = cfs_b->parent_tg->css.id;
+	cpu_req -> rsrc_amnt = 1000; // this is arbitary
+	cpu_req -> request = 1;
+
+	ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)cpu_req, \
+				sizeof(ec_message_t) + 1, MSG_DONTWAIT);
+
+	if (ret < 0) {
+		printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
+	}
+	else {
+		kfree(cpu_req);
+	}
+
+	// Here, we want to listen to a response (format tbd) and assign it to the cfs_b -> runtime...
+	
+
+	return 0;
+}
+
 
 int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
@@ -109,8 +137,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct task_struct *tsk_in_cg; //task_struct for the task in cgroup
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
-
-	struct mem_cgroup* memcg;
+	struct mem_cgroup *memcg;
 
 	int ret;
 
@@ -148,6 +175,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	cfs_b->is_ec = 1;
 	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
+	// Set the parent in the cfs_b now..
+	cfs_b->parent_tg = tg;
 
 	if(!memcg)
 		return __BADARG;
@@ -192,11 +221,14 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	_ec_c -> read = &tcp_rcv;
 
+	_ec_c -> request_function = &request_function;
+
 	_ec_c -> ec_cli = sockfd_cli;
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 
 	cfs_b->ecc = _ec_c;
+
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "ERROR setting cfs_b->ecc\n");
 		return __BADARG;
