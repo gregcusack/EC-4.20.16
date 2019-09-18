@@ -96,30 +96,42 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	return len == length ? 0:len;
 }
 
-int request_cpu(struct cfs_bandwidth *cfs_b){
-	printk(KERN_ALERT "[EC DEBUG] Requesting cpu function...\n");
-
-	ec_message_t* cpu_req;
+int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
+	ec_message_t* serv_req;
 	unsigned long ret;
+	int rv = -1;
 
-	cpu_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	cpu_req -> is_mem = 0;
-	cpu_req -> cgroup_id = cfs_b->parent_tg->css.id;
-	cpu_req -> rsrc_amnt = 1000; // this is arbitary
-	cpu_req -> request = 1;
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_req -> request = 1;
+	printk(KERN_INFO "SIZE OF EC_MESSAGE STRUCT: %ld\n", sizeof(ec_message_t)); // Responding 32 bytes of data being sent here...
+	if (cfs_b != NULL && memcg == NULL) {
+		//printk(KERN_ALERT "CGroup Id: %d\n", cfs_b->parent_tg->css.id);
+		serv_req -> is_mem = 0;
+		serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
+		serv_req -> rsrc_amnt = 1000; // this is arbitary
 
-	ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)cpu_req, \
-				sizeof(ec_message_t) + 1, MSG_DONTWAIT);
+		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+		if (ret < 0) {
+			printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
+		}
+		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
 
-	if (ret < 0) {
-		printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
+	} else if(cfs_b == NULL && memcg != NULL) {
+		unsigned long new_max;
+		serv_req -> is_mem = 1;
+		serv_req -> cgroup_id = memcg->id.id;
+		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); // this is arbitary
+
+		ret = memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
+		if ( (rv > 0) && (new_max > serv_req->rsrc_amnt) ) 
+		{
+			printk(KERN_ALERT"[dbg] mem_charge: we read the data from the GCM and we got: %ld\n", new_max);
+			mem_cgroup_resize_max(memcg, new_max, false);
+			return -1;
+		}
 	}
-	else {
-		kfree(cpu_req);
-	}
-
-	// Here, we want to listen to a response (format tbd) and assign it to the cfs_b -> runtime...
-	
+	kfree(serv_req);
 
 	return 0;
 }

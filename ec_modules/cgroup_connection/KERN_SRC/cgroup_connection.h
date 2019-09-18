@@ -34,7 +34,7 @@ MODULE_AUTHOR("MAZIYAR NAZARI");
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
 int tcp_rcv(struct socket* sock, char* str, int max_size, unsigned long flags);
-int request_cpu(struct cfs_bandwidth *cfs_b);
+int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg);
 
 //Global Cloud Manager ip & port must be passed to the ec_connect
 int ec_connect(char* GCM_ip, int GCM_port, int pid);

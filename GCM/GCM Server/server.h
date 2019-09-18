@@ -18,7 +18,7 @@
 #define false 0
 #define __PORT__ 4444
 #define __MAX_CLIENT__ 30
-#define __BUFFSIZE__ 16
+#define __BUFFSIZE__ 1024
 #define __FAILED__ -1
 #define __NOMEM__ -2
 #define __QUOTA__ 5000
@@ -40,10 +40,10 @@ typedef struct gcm_server {
 
 typedef struct ec_msg {
 	uint32_t client_ip;
-        uint32_t cgroup_id;
-        _bool is_mem;
-        unsigned long rsrc_amnt;
-        _bool request;
+    uint32_t cgroup_id;
+    _bool is_mem;
+    uint64_t rsrc_amnt;
+    _bool request;
 
 } ec_message_t;
 

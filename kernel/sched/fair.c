@@ -4268,7 +4268,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 	cfs_b->runtime = cfs_b->quota;
 	// This logic is only for an "elastic" container..
 	if(cfs_b->is_ec) {
-		ret = cfs_b->ecc->request_cpu(cfs_b);
+		ret = cfs_b->ecc->request_function(cfs_b, NULL);
 		if (ret < 0) {
 			printk(KERN_ALERT "[ECC DBG] __refill_cfs: EC cpu request function returned error %ld..\n", ret);
 		}

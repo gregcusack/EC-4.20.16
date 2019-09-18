@@ -1369,6 +1369,7 @@ unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
 	}
 	return max;
 }
+EXPORT_SYMBOL(mem_cgroup_get_max);
 
 static bool mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
 				     int order)
@@ -2174,7 +2175,7 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool oomed = false;
 	enum oom_status oom_status;
 	unsigned long new;
-	ec_message_t* mem_req;
+	int request_function_ret;
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2203,27 +2204,30 @@ retry:
 	
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
 		
-		unsigned long new_max;
-		int rv = -1;
+		//int rv = -1;
+		//unsigned long new_max;
+		// mem_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+		// mem_req -> is_mem = 1;
+		// mem_req -> cgroup_id = memcg->id.id;
+		// mem_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
+		// mem_req -> request = 1;
+		// printk(KERN_ALERT "[dbg] try_charge: Sending a request to server...\n");
+		// memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
-		mem_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-		mem_req -> is_mem = 1;
-		mem_req -> cgroup_id = memcg->id.id;
-		mem_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
-		mem_req -> request = 1;
-
-		printk(KERN_ALERT "[dbg] try_charge: Sending a request to server...\n");
-		
-		memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
-		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
-
-		if ( (rv > 0) && (new_max > mem_req->rsrc_amnt) ) 
-		{
-			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
-			mem_cgroup_resize_max(memcg, new_max, false);
-			kfree(mem_req);
+		request_function_ret = memcg -> ecc -> request_function(NULL, memcg);
+		if (request_function_ret == -1) {
 			goto retry;
 		}
+
+		//rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
+
+		// if ( (rv > 0) && (new_max > mem_req->rsrc_amnt) ) 
+		// {
+		// 	printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
+		// 	mem_cgroup_resize_max(memcg, new_max, false);
+		// 	//kfree(mem_req);
+		// 	goto retry;
+		// }
 		//else
 		//	printk(KERN_ALERT"[dbg] tray_charge: This is why we did not charge max. new_max: %lu and previous memory max: %lu\n", new_max, mem_req -> mem_limit);
 	}
