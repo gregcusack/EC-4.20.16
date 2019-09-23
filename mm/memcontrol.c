@@ -1369,6 +1369,7 @@ unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
 	}
 	return max;
 }
+EXPORT_SYMBOL(mem_cgroup_get_max);
 
 static bool mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
 				     int order)
@@ -2213,10 +2214,10 @@ retry:
 		
 		memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
 		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
-
+		printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
 		if ( (rv > 0) && (new_max > mem_req->mem_limit) ) 
 		{
-			printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
+			printk(KERN_ALERT"[dbg] try_charge: updating max is successful . we read the data from the GCM and we got: %ld\n", new_max);
 			mem_cgroup_resize_max(memcg, new_max, false);
 			kfree(mem_req);
 			goto retry;
@@ -3008,7 +3009,7 @@ static void accumulate_memcg_tree(struct mem_cgroup *memcg,
 	}
 }
 
-static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
+unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 {
 	unsigned long val = 0;
 
@@ -3029,6 +3030,7 @@ static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 	}
 	return val;
 }
+EXPORT_SYMBOL(mem_cgroup_usage);
 
 enum {
 	RES_USAGE,
@@ -4379,6 +4381,7 @@ struct mem_cgroup *mem_cgroup_from_id(unsigned short id)
 	WARN_ON_ONCE(!rcu_read_lock_held());
 	return idr_find(&mem_cgroup_idr, id);
 }
+EXPORT_SYMBOL(mem_cgroup_from_id);
 
 static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 {

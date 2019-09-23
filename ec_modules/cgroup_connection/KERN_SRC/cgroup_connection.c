@@ -108,8 +108,13 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	struct mem_cgroup* memcg;
 
-	int ret;
+	int ret, valread;
 
+	ec_message_t* init_msg;
+
+	unsigned short cgroup_id;
+
+	char buf[50];
 
 	printk(KERN_INFO "pid: %d\n", pid);
 
@@ -171,11 +176,18 @@ int ec_connect(char* GCM_ip, int GCM_port, int pid) {
 
 	printk(KERN_INFO"[Success] connection established to the server!\n");
 
-	//tcp_send(sockfd_cli, buf, 50, MSG_DONTWAIT);
 
-	//valread = tcp_rcv(sockfd_cli, buf, 50, 0);
+	init_msg = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
-	//printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
+	init_msg->is_mem = 2;
+
+	init_msg->cgroup_id = mem_cgroup_id(memcg);
+
+	tcp_send(sockfd_cli, (char*)init_msg, sizeof(ec_message_t), MSG_DONTWAIT);
+
+	valread = tcp_rcv(sockfd_cli, buf, 50, 0);
+
+	printk(KERN_INFO"[Success] Message bytes received from the server is: %d\n ", valread);
 
 	memcg -> ecc = _ec_c;
 
