@@ -434,7 +434,9 @@ static inline unsigned short mem_cgroup_id(struct mem_cgroup *memcg)
 
 	return memcg->id.id;
 }
-struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
+extern struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
+
+extern unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap);
 
 static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 {

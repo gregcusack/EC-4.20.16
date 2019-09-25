@@ -1,78 +1,81 @@
 #include "server.h"
 
-unsigned long handle_mem_req(ec_message_t* req) {
-
-	unsigned long ret = 0;
-	unsigned long fail = 1;
+ec_message_t* handle_init_req(ec_message_t* req) {
 
 	pthread_mutex_t mlock = PTHREAD_MUTEX_INITIALIZER;
+	if ((req -> is_mem != 2))
+		return NULL;
 
-	if (!req -> is_mem)
-		return __FAILED__;
+	return req;
 
+}
+
+ec_message_t* handle_mem_req(ec_message_t* req) {
+
+	ec_message_t* res = NULL;
+
+	if (req -> is_mem != 1)
+		return res;
+
+	res = malloc(sizeof(ec_message_t));
+	res->client_ip = req->client_ip;
+	res->cgroup_id = req->cgroup_id;
+	res->is_mem = req->is_mem;
+	res->request = 0;
+
+	pthread_mutex_t mlock = PTHREAD_MUTEX_INITIALIZER;
 	if (memory_limit > 0)
 	{
 		pthread_mutex_lock(&mlock);
-
 		ret = memory_limit > __QUOTA__ ?  __QUOTA__ : memory_limit ;
-
 		memory_limit -= ret;
-
 		pthread_mutex_unlock(&mlock);
-
-		return req->rsrc_amnt + ret;
-		
+		res->rsrc_amnt = req->rsrc_amnt + ret;
 	}
-	else 
-		return fail;
+	return res;
 
 }
 
-unsigned long handle_cpu_req(ec_message_t* req) {
-	unsigned long ret = 0;
-	unsigned long fail = 1;
-	pthread_mutex_t cpulock = PTHREAD_MUTEX_INITIALIZER;
+ec_message_t* handle_cpu_req(ec_message_t* req) {
+	ec_message_t* res = NULL;
 
-        if (req -> is_mem) {
-		printf("[dbg] IN CPU handler but is mem.. hmm? returning\n");
-                return __FAILED__;
-	}
+	if (req -> is_mem != 0)
+		return res;
 
-	printf("[dbg] cgroup id: %d\n", req->cgroup_id);
+	res = malloc(sizeof(ec_message_t));
+	res->client_ip = req->client_ip;
+	res->cgroup_id = req->cgroup_id;
+	res->is_mem = req->is_mem;
+	res->request = 0;
 
+	pthread_mutex_t mlock = PTHREAD_MUTEX_INITIALIZER;
 	if (cpu_limit > 0)
-        {
-                pthread_mutex_lock(&cpulock);
-
-                ret = cpu_limit > __QUOTA__ ?  __QUOTA__ : cpu_limit ;
-
-                cpu_limit -= ret;
-
-                pthread_mutex_unlock(&cpulock);
-
-		printf("[dbg] CPU Client request: %ld\n", req -> rsrc_amnt + ret );
-                return ret;
-
-        }
-        else 
-                return fail;
+	{
+		// Need to update this...
+		res->rsrc_amnt = req->rsrc_amnt + 1000;
+	}
+	return res;
 
 }
 
-unsigned long handle_req(char* buffer) {
+ec_message_t* handle_req(char* buffer) {
 
 	ec_message_t* req = (ec_message_t*) buffer;
-	unsigned long ret = __FAILED__;
-	switch ( req -> is_mem ) {
+	ec_message_t* ret = NULL;
 
-		case true:
+	switch ( req -> is_mem ) {
+		case 0:
+			printf("[dbg] Handling cpu stuff\n");
+			ret = handle_cpu_req(req);
+			break;
+
+		case 1:
 //			printf("[dbg] Handling mem stuff\n");
 			ret = handle_mem_req(req);
 			break;
 
-		case false:
-			printf("[dbg] Handling cpu stuff\n");
-			ret = handle_cpu_req(req);
+		case 2:
+			ret = handle_init_req(req);
 			break;
 
 		default:
@@ -85,7 +88,7 @@ unsigned long handle_req(char* buffer) {
 void *handle_client_reqs(void* clifd) {
 
 	int num_bytes;
-	unsigned long ret;
+	ec_message_t* ret;
 	char buffer[__BUFFSIZE__];
 	int client_fd = *((int*) clifd);
 
@@ -94,25 +97,25 @@ void *handle_client_reqs(void* clifd) {
 	bzero(buffer, __BUFFSIZE__);
 	while( (num_bytes = read(client_fd, buffer, __BUFFSIZE__) ) > 0 ){
 
-		ret = 0;
+		ret = NULL;
 		printf("[dbg] Number of bytes read: %d\n", num_bytes);
 		ret = handle_req(buffer);
 		
-		if (ret > 0)
+		if (ret != NULL)
 		{
-			printf("[dbg] We got the new max! It's time to send!\n");
-			if(write(client_fd, (const char*) &ret,  sizeof(unsigned long) ) < 0){
+			if(write(client_fd, (const char*) &ret,  sizeof(ec_message_t) ) < 0){
 				perror("[dbg] Writing to socket failed!");
 				break;
 			}
+			free(ret);
 		}
 		else {
 			printf("[FAILD] GCM Thread: [%lu] Unable to handle request!\n", mem_reqs++);
-			if (write(client_fd, (const char*) &ret,  sizeof(unsigned long) ) < 0)
-			{
-				perror("[dbg] Writing to socket failed!");
-				break;
-			}
+			// if (write(client_fd, (const char*) &ret,  sizeof(ec_message_t) ) < 0)
+			// {
+			// 	perror("[dbg] Writing to socket failed!");
+			// 	break;
+			// }
 			break;
 		}
 		bzero(buffer, __BUFFSIZE__);

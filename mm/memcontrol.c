@@ -2203,7 +2203,6 @@ retry:
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
-
 		request_function_ret = memcg -> ecc -> request_function(NULL, memcg);
 		if (request_function_ret == -1) {
 			goto retry;
@@ -3004,7 +3003,7 @@ static void accumulate_memcg_tree(struct mem_cgroup *memcg,
 	}
 }
 
-static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
+unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 {
 	unsigned long val = 0;
 
@@ -3025,6 +3024,7 @@ static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 	}
 	return val;
 }
+EXPORT_SYMBOL(mem_cgroup_usage);
 
 enum {
 	RES_USAGE,
@@ -4375,6 +4375,7 @@ struct mem_cgroup *mem_cgroup_from_id(unsigned short id)
 	WARN_ON_ONCE(!rcu_read_lock_held());
 	return idr_find(&mem_cgroup_idr, id);
 }
+EXPORT_SYMBOL(mem_cgroup_from_id);
 
 static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 {

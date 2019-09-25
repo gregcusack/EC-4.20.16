@@ -910,6 +910,8 @@ asmlinkage long sys_rseq(struct rseq __user *rseq, uint32_t rseq_len,
 
 asmlinkage long sys_ec_connect_(char *GCM_ip, int GCM_port, int pid);
 
+asmlinkage long sys_shrink_mem_(unsigned long id, int memsw);
+
 /*
  * Architecture-specific system calls
  */

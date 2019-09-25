@@ -1,5 +1,5 @@
-#ifndef __GCM__
-#define __GCM__
+#ifndef __AGENT__
+#define __AGENT__
 
 #include <stdio.h>  
 #include <string.h>   //strlen  
@@ -13,19 +13,23 @@
 #include <netinet/in.h>  
 #include <sys/time.h> //Macros
 #include <pthread.h>
+#include <sys/syscall.h>
+
 
 #define true 1
 #define false 0
-#define __PORT__ 4444
+#define __PORT__ 4445
 #define __MAX_CLIENT__ 30
-#define __BUFFSIZE__ 1024
+#define __BUFFSIZE__ 16
 #define __FAILED__ -1
 #define __NOMEM__ -2
 #define __QUOTA__ 5000
+#define __NR_SYSCALL__ 336
 
+int cgroup_fds[__MAX_CLIENT__];
 unsigned long memory_limit = 30000;
 unsigned long mem_reqs = 0;
-unsigned long cpu_limit = 500000;
+int num_of_clients = 0;
 
 typedef int _bool;
 
@@ -38,25 +42,22 @@ typedef struct gcm_server {
 
 } gcm_server_t;
 
-typedef struct ec_msg {
-	uint32_t client_ip;
-    uint32_t cgroup_id;
-    _bool is_mem;
-    uint64_t rsrc_amnt;
-    _bool request;
+typedef struct ec_reclaim_msg {
 
-} ec_message_t;
+	unsigned short cgroup_id;
 
-ec_message_t handle_req(char* buffer);
+	int is_mem;
 
-void *handle_client_reqs(void* thread_id);
+	//...maybe it needs more things
+
+} ec_reclaim_msg_t;
+
+unsigned long handle_req(char* buffer);
+
+void *handle_client_reqs(void* clifd);
 
 gcm_server_t* create_mt_server();
 
-ec_message_t* handle_mem_req(ec_message_t* req);
-
-ec_message_t* handle_cpu_req(ec_message_t* req);
-
-ec_message_t* handle_init_req(ec_message_t* req);
+unsigned long handle_mem_req(ec_reclaim_msg_t* req);
 
 #endif

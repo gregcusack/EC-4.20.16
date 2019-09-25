@@ -165,6 +165,26 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 		return __BADARG;
 	}
 
+	task_in_cg_pid = find_get_pid(pid);
+	if(!task_in_cg_pid)
+		return __BADARG;
+	tsk_in_cg = pid_task(task_in_cg_pid, PIDTYPE_PID);
+	if(!tsk_in_cg)
+		return __BADARG;
+
+	memcg = mem_cgroup_from_task(tsk_in_cg);
+	tg = tsk_in_cg->sched_task_group;
+	if(!tg) {
+		printk(KERN_ALERT "[ERROR] tg not found! exiting\n");
+		return __BADARG;
+	}
+
+	cfs_b = &tg->cfs_bandwidth;
+	if(!cfs_b) {
+		printk(KERN_ALERT "cfs_b error!\n");
+		return __BADARG;
+	}
+
 	ret = -1;
 //	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
@@ -190,39 +210,20 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_req -> is_mem = 1;
-	init_msg_req -> cgroup_id = 0;
+	init_msg_req -> is_mem = 2;
+	init_msg_req -> cgroup_id = mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt = 0; 
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(init_msg_req);
 
-	recv = tcp_rcv(sockfd_cli, (char*) &init_msg_res, sizeof(unsigned long) + 1, 0);
+	recv = tcp_rcv(sockfd_cli, (char*) &init_msg_res, sizeof(ec_message_t), 0);
+	printk(KERN_ALERT "[EC DBG] BYTES READ FROM SERVER: %d\n", recv);
 	if (recv == 0) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
 	}
 
-	// Continue to flag this container as "elastic"
-	task_in_cg_pid = find_get_pid(pid);
-	if(!task_in_cg_pid)
-		return __BADARG;
-	tsk_in_cg = pid_task(task_in_cg_pid, PIDTYPE_PID);
-	if(!tsk_in_cg)
-		return __BADARG;
-
-	memcg = mem_cgroup_from_task(tsk_in_cg);
-	tg = tsk_in_cg->sched_task_group;
-	if(!tg) {
-		printk(KERN_ALERT "[ERROR] tg not found! exiting\n");
-		return __BADARG;
-	}
-
-	cfs_b = &tg->cfs_bandwidth;
-	if(!cfs_b) {
-		printk(KERN_ALERT "cfs_b error!\n");
-		return __BADARG;
-	}
 
 	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
 	if(cfs_b->is_ec != 0) {
