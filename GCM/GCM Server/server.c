@@ -6,6 +6,7 @@ ec_message_t* handle_init_req(ec_message_t* req) {
 	if ((req -> is_mem != 2))
 		return NULL;
 
+	printf("SENDING INIT RESPONSE of size: %ld\n", sizeof(ec_message_t));
 	return req;
 
 }
@@ -13,11 +14,12 @@ ec_message_t* handle_init_req(ec_message_t* req) {
 ec_message_t* handle_mem_req(ec_message_t* req) {
 
 	ec_message_t* res = NULL;
+	unsigned long ret = 0;
 
 	if (req -> is_mem != 1)
 		return res;
 
-	res = malloc(sizeof(ec_message_t));
+	res = (ec_message_t*) malloc(sizeof(ec_message_t));
 	res->client_ip = req->client_ip;
 	res->cgroup_id = req->cgroup_id;
 	res->is_mem = req->is_mem;
@@ -42,7 +44,7 @@ ec_message_t* handle_cpu_req(ec_message_t* req) {
 	if (req -> is_mem != 0)
 		return res;
 
-	res = malloc(sizeof(ec_message_t));
+	res = (ec_message_t*) malloc(sizeof(ec_message_t));
 	res->client_ip = req->client_ip;
 	res->cgroup_id = req->cgroup_id;
 	res->is_mem = req->is_mem;
@@ -65,7 +67,7 @@ ec_message_t* handle_req(char* buffer) {
 
 	switch ( req -> is_mem ) {
 		case 0:
-			printf("[dbg] Handling cpu stuff\n");
+//			printf("[dbg] Handling cpu stuff\n");
 			ret = handle_cpu_req(req);
 			break;
 
@@ -103,11 +105,11 @@ void *handle_client_reqs(void* clifd) {
 		
 		if (ret != NULL)
 		{
-			if(write(client_fd, (const char*) &ret,  sizeof(ec_message_t) ) < 0){
+			if(write(client_fd, (const char*)&ret,  sizeof(ec_message_t) ) < 0){
 				perror("[dbg] Writing to socket failed!");
 				break;
 			}
-			free(ret);
+			printf("Wrote Data to Kernel # of bytes: %ld\n", sizeof(ec_message_t));
 		}
 		else {
 			printf("[FAILD] GCM Thread: [%lu] Unable to handle request!\n", mem_reqs++);

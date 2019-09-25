@@ -47,7 +47,7 @@ typedef struct ec_msg {
 
 } ec_message_t;
 
-ec_message_t handle_req(char* buffer);
+ec_message_t* handle_req(char* buffer);
 
 void *handle_client_reqs(void* thread_id);
 

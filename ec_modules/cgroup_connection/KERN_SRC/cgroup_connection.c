@@ -53,22 +53,19 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 		//printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
 		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN))) {
 			printk(KERN_ALERT "Error in sending message in Kernel Module\n");
-			//goto repeat_send;
+			goto repeat_send;
 		}
 
 		if(len > 0){
-
 			written += len;
-
 			left -= len;
-
 			if(left)
 				goto repeat_send;
 
 		}
 	set_fs(oldmm);
 
-	return written == length?0 : len;
+	return written == length ? 0 : len;
 }
 
 
@@ -77,6 +74,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	struct msghdr msg;
 	struct kvec vec;
 	int len;
+	int iter = 0;
 
 	msg.msg_name = 0;
 	msg.msg_namelen = 0;
@@ -87,20 +85,25 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	vec.iov_base = str;
 
 	read_again:
-		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags | MSG_DONTWAIT));
-		//len = kernel_recv(sock, databuf, length, ());
+		iter++;
+		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
-			//goto read_again;
+			if (iter > 10) {
+				return len == length ? 0 : len;
+			}
+			goto read_again;
 		}
 	return len == length ? 0:len;
 }
 
 int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 	ec_message_t* serv_req;
+	ec_message_t* serv_res;
 	unsigned long ret;
-	int rv = -1;
-	struct socket* sockfd_cli = NULL;
+	int rv;
+	struct socket* sockfd = NULL;
+	char buff_recv[50];
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
@@ -108,35 +111,46 @@ int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 		serv_req -> is_mem = 0;
 		serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
 		serv_req -> rsrc_amnt = 1000; // this is arbitary
-		sockfd_cli = cfs_b->ecc->ec_cli;
-
+		sockfd = cfs_b->ecc->ec_cli;
 		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
-
 	} else if(cfs_b == NULL && memcg != NULL) {
-		unsigned long new_max;
+		//unsigned long new_max;
 		serv_req -> is_mem = 1;
 		serv_req -> cgroup_id = memcg->id.id;
 		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); 
-		sockfd_cli = memcg->ecc->ec_cli;
-
+		sockfd = memcg->ecc->ec_cli;
 	}
-	if (sockfd_cli != NULL) {
-		printk(KERN_ALERT "[EC DEBUG] Calling TCP_SEND FUNCTION\n");
-		ret = tcp_send(sockfd_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	if (sockfd == NULL) {
+		printk(KERN_ALERT "[EC ERROR] Request Function: Socked FD Error\n");
+	 	return 0;
 	}
-	if (ret < 0) {
-		printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
-	}
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(serv_req);
 
-	rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
-	if ( (rv > 0) && (new_max > serv_req->rsrc_amnt) ) 
-	{
-		printk(KERN_ALERT"[dbg] mem_charge: we read the data from the GCM and we got: %ld\n", new_max);
-		mem_cgroup_resize_max(memcg, new_max, false);
-		return -1;
-	}
-
+	// rv = tcp_rcv(sockfd, buff_recv, 50, 0);
+	// printk(KERN_ALERT "[EC DBG] BYTES READ FROM SERVER RESPONSE: %d\n", rv);
+	// if (rv == 0) {
+	// 	printk(KERN_ALERT "[EC ERROR] NO RESPONSE FROM SERVER\n");
+	//  	return 0;
+	// }
+	// serv_res = (ec_message_t*) buff_recv;
+	// if (serv_res != NULL) {
+	// 	printk(KERN_ALERT "[EC MESSAGE] REQUEST Type: %d\n", serv_res->is_mem);
+	// 	// if (serv_res -> is_mem == 0) {
+	// 	// 	printk(KERN_ALERT "[EC MESSAGE] HANDLE CPU KERNEL CASE HERE\n");
+	// 	// } else if (serv_res -> is_mem == 1) {
+	// 	// 	printk(KERN_ALERT "[EC MESSAGE] HANDLE MEM KERNEL CASE HERE\n");
+	// 	// 	if ( (serv_res->rsrc_amnt) > (serv_req->rsrc_amnt)) {
+	// 	// 		printk(KERN_ALERT"[EC DBG] mem_charge: we read the data from the GCM and we got: %lld\n", serv_res->rsrc_amnt);
+	// 	// 		// TODO: This is poor design but right now, returning -1 triggers a read again in memcontrol.c
+	// 	// 		return -1;
+	// 	// 	}
+	// 	// } else {
+	// 	// 	printk(KERN_ALERT "[EC ERROR] request function: INVALID SERVER RESONSE\n");
+	// 	// 	return 0;
+	// 	// }
+	// }
+	// kfree(serv_res);
 	return 0;
 }
 
@@ -153,13 +167,12 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct mem_cgroup *memcg;
 
 	ec_message_t* init_msg_req;
+	char buff_in[64];
 	//ec_message_t* init_msg_res;
-	unsigned long init_msg_res;
 	int ret, recv;
 
 	// We first check whether the server is running and we can send a request to it prior to 
 	// indicating the container as "elastic"
-
 	if(!GCM_ip || !GCM_port) {
 		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
 		return __BADARG;
@@ -217,13 +230,13 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(init_msg_req);
 
-	recv = tcp_rcv(sockfd_cli, (char*) &init_msg_res, sizeof(ec_message_t), 0);
-	printk(KERN_ALERT "[EC DBG] BYTES READ FROM SERVER: %d\n", recv);
+	recv = tcp_rcv(sockfd_cli, buff_in, 64, 0);
+	printk(KERN_ALERT "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
 	if (recv == 0) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
 	}
-
+	// TODO: Add confirmation that the init response from the server is correct?
 
 	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
 	if(cfs_b->is_ec != 0) {
