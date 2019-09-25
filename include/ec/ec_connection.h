@@ -29,10 +29,6 @@ struct cfs_bandwidth;
 
 struct ec_connection {
 
-	int (*write)(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
-
-	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
-
 	int (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
 
 	struct socket* ec_cli;

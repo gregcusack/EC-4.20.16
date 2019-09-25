@@ -100,38 +100,42 @@ int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 	ec_message_t* serv_req;
 	unsigned long ret;
 	int rv = -1;
+	struct socket* sockfd_cli = NULL;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
-	printk(KERN_INFO "SIZE OF EC_MESSAGE STRUCT: %ld\n", sizeof(ec_message_t)); // Responding 32 bytes of data being sent here...
 	if (cfs_b != NULL && memcg == NULL) {
-		//printk(KERN_ALERT "CGroup Id: %d\n", cfs_b->parent_tg->css.id);
 		serv_req -> is_mem = 0;
 		serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
 		serv_req -> rsrc_amnt = 1000; // this is arbitary
+		sockfd_cli = cfs_b->ecc->ec_cli;
 
-		ret = cfs_b->ecc->write(cfs_b->ecc->ec_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-		if (ret < 0) {
-			printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
-		}
 		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
 
 	} else if(cfs_b == NULL && memcg != NULL) {
 		unsigned long new_max;
 		serv_req -> is_mem = 1;
 		serv_req -> cgroup_id = memcg->id.id;
-		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); // this is arbitary
+		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); 
+		sockfd_cli = memcg->ecc->ec_cli;
 
-		ret = memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-		rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
-		if ( (rv > 0) && (new_max > serv_req->rsrc_amnt) ) 
-		{
-			printk(KERN_ALERT"[dbg] mem_charge: we read the data from the GCM and we got: %ld\n", new_max);
-			mem_cgroup_resize_max(memcg, new_max, false);
-			return -1;
-		}
+	}
+	if (sockfd_cli != NULL) {
+		printk(KERN_ALERT "[EC DEBUG] Calling TCP_SEND FUNCTION\n");
+		ret = tcp_send(sockfd_cli, (const char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	}
+	if (ret < 0) {
+		printk(KERN_ALERT "[EC DEBUG] request_cpu: Error in talking to server...\n");
 	}
 	kfree(serv_req);
+
+	rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
+	if ( (rv > 0) && (new_max > serv_req->rsrc_amnt) ) 
+	{
+		printk(KERN_ALERT"[dbg] mem_charge: we read the data from the GCM and we got: %ld\n", new_max);
+		mem_cgroup_resize_max(memcg, new_max, false);
+		return -1;
+	}
 
 	return 0;
 }
@@ -140,9 +144,6 @@ int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	struct socket *sockfd_cli = NULL;
-
-//	struct ec_connection* _ec_c;
-
 	struct sockaddr_in saddr;
 
 	struct pid *task_in_cg_pid; //pid data structure for task in cgroup
@@ -151,17 +152,62 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
 
-	int ret;
+	ec_message_t* init_msg_req;
+	//ec_message_t* init_msg_res;
+	unsigned long init_msg_res;
+	int ret, recv;
 
-	printk(KERN_INFO "pid: %d\n", pid);
+	// We first check whether the server is running and we can send a request to it prior to 
+	// indicating the container as "elastic"
 
+	if(!GCM_ip || !GCM_port) {
+		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
+		return __BADARG;
+	}
+
+	ret = -1;
+//	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	if(ret < 0){
+		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
+		return ret;
+	}
+
+	memset(&saddr, 0, sizeof(saddr));
+
+	saddr.sin_family = AF_INET;
+	saddr.sin_port = htons(GCM_port);
+	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+//	saddr.sin_addr.s_addr = in_aton(GCM_ip);
+
+	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
+
+	if(ret && (ret != -EINPROGRESS)){
+		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
+		return ret;
+	}
+	
+	// Here, we have to validate the connection so it can fail if the server isn't running 
+	// (i.e : a registration message...)
+	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	init_msg_req -> is_mem = 1;
+	init_msg_req -> cgroup_id = 0;
+	init_msg_req -> rsrc_amnt = 0; 
+
+	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	kfree(init_msg_req);
+
+	recv = tcp_rcv(sockfd_cli, (char*) &init_msg_res, sizeof(unsigned long) + 1, 0);
+	if (recv == 0) {
+	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
+	 	return __BADARG;
+	}
+
+	// Continue to flag this container as "elastic"
 	task_in_cg_pid = find_get_pid(pid);
-
 	if(!task_in_cg_pid)
 		return __BADARG;
-
 	tsk_in_cg = pid_task(task_in_cg_pid, PIDTYPE_PID);
-
 	if(!tsk_in_cg)
 		return __BADARG;
 
@@ -187,76 +233,29 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	cfs_b->is_ec = 1;
 	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
-	// Set the parent in the cfs_b now..
 	cfs_b->parent_tg = tg;
 
 	if(!memcg)
 		return __BADARG;
-
-	if(!GCM_ip || !GCM_port) {
-
-		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
-
-		return __BADARG;
-	}
-
-	ret = -1;
-
-//	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
-	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
-	if(ret < 0){
-
-		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
-
-		return ret;
-	}
-
-	memset(&saddr, 0, sizeof(saddr));
-
-	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(GCM_port);
-	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-//	saddr.sin_addr.s_addr = in_aton(GCM_ip);
-
-	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR | O_NONBLOCK);
-
-	if(ret && (ret != -EINPROGRESS)){
-
-		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
-
-		return ret;
-	}
-
+		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
-
-	_ec_c -> write = &tcp_send;
-
-	_ec_c -> read = &tcp_rcv;
-
 	_ec_c -> request_function = &request_function;
-
 	_ec_c -> ec_cli = sockfd_cli;
-
-	printk(KERN_INFO"[Success] connection established to the server!\n");
-
 	cfs_b->ecc = _ec_c;
 
 	if(!cfs_b->ecc) {
-		printk(KERN_ALERT "ERROR setting cfs_b->ecc\n");
+		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
-
 	printk(KERN_INFO"[Success] cfb_b successfully connected to ec_c!\n");
 
 	memcg -> ecc = _ec_c;
-
 	memcg -> ec_flag = 1;
-
 	memcg -> ec_max = 0;
-
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
-
+		
 	return 0;
+
 }
 
 

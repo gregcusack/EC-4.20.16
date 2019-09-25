@@ -63,8 +63,6 @@ unsigned long handle_req(char* buffer) {
 
 	ec_message_t* req = (ec_message_t*) buffer;
 	unsigned long ret = __FAILED__;
-	//printf("[dbg] maximum memory read from container: %lu\n", req->mem_limit);
-	//printf("[dbg] cgroup id of the container: %d\n", req->cgroup_id);
 	switch ( req -> is_mem ) {
 
 		case true:
@@ -75,7 +73,6 @@ unsigned long handle_req(char* buffer) {
 		case false:
 			printf("[dbg] Handling cpu stuff\n");
 			ret = handle_cpu_req(req);
-//			printf("[dbg] Return CPU Request: %ld\n", ret);
 			break;
 
 		default:
@@ -101,9 +98,9 @@ void *handle_client_reqs(void* clifd) {
 		printf("[dbg] Number of bytes read: %d\n", num_bytes);
 		ret = handle_req(buffer);
 		
-		/*if (ret > 0)
+		if (ret > 0)
 		{
-			//printf("[dbg] We got the new max! It's time to send!\n");
+			printf("[dbg] We got the new max! It's time to send!\n");
 			if(write(client_fd, (const char*) &ret,  sizeof(unsigned long) ) < 0){
 				perror("[dbg] Writing to socket failed!");
 				break;
@@ -117,7 +114,7 @@ void *handle_client_reqs(void* clifd) {
 				break;
 			}
 			break;
-		}*/
+		}
 		bzero(buffer, __BUFFSIZE__);
 	}
 

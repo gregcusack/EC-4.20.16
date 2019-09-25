@@ -2203,22 +2203,11 @@ retry:
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
-		
-		//int rv = -1;
-		//unsigned long new_max;
-		// mem_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-		// mem_req -> is_mem = 1;
-		// mem_req -> cgroup_id = memcg->id.id;
-		// mem_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
-		// mem_req -> request = 1;
-		// printk(KERN_ALERT "[dbg] try_charge: Sending a request to server...\n");
-		// memcg -> ecc -> write(memcg -> ecc -> ec_cli, (const char*) mem_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
 		request_function_ret = memcg -> ecc -> request_function(NULL, memcg);
 		if (request_function_ret == -1) {
 			goto retry;
 		}
-
 		//rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
 
 		// if ( (rv > 0) && (new_max > mem_req->rsrc_amnt) ) 

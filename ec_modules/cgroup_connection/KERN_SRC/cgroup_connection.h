@@ -19,15 +19,20 @@
 #include<linux/tcp.h>
 #include<linux/slab.h>
 #include<linux/net.h>
+#include<asm/socket.h>
 #include<asm/uaccess.h>
 #include<linux/in.h>
 #include<ec/ec_connection.h>
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
+#include <linux/kthread.h>
+#include <linux/wait.h>
 #include "../kernel/sched/sched.h"
 
 #define __BADARG -1
+
+DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("MAZIYAR NAZARI");
