@@ -1,0 +1,3 @@
+[submodule "ec_gcm"]
+	path = ec_gcm
+	url = git@github.com:gregcusack/ec_gcm.git

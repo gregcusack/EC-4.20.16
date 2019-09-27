@@ -86,36 +86,46 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 	read_again:
 		iter++;
+		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
+		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
 			if (iter > 10) {
 				return len == length ? 0 : len;
 			}
-			goto read_again;
+//			goto read_again;
 		}
 	return len == length ? 0:len;
 }
 
-int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
+uint64_t bytes_to_ull(char *bytes) {
+	return *((uint64_t*)bytes);
+}
+
+unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
+	int i;
 	ec_message_t* serv_req;
 	ec_message_t* serv_res;
+	unsigned long long alloc_ret = 0;
+//	uint64_t alloc_ret = 0;
+//	char alloc_ret[64];
 	unsigned long ret;
 	int rv;
 	struct socket* sockfd = NULL;
-	char buff_recv[50];
+	unsigned char buff_recv[8] = {0};
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
 	if (cfs_b != NULL && memcg == NULL) {
-		serv_req -> is_mem = 0;
+		serv_req -> req_type = 0;
 		serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
 		serv_req -> rsrc_amnt = 1000; // this is arbitary
 		sockfd = cfs_b->ecc->ec_cli;
 		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
 	} else if(cfs_b == NULL && memcg != NULL) {
 		//unsigned long new_max;
-		serv_req -> is_mem = 1;
+		serv_req -> req_type = 1;
 		serv_req -> cgroup_id = memcg->id.id;
 		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); 
 		sockfd = memcg->ecc->ec_cli;
@@ -126,6 +136,21 @@ int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 	}
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(serv_req);
+
+	ret = tcp_rcv(sockfd, buff_recv, sizeof(buff_recv), MSG_DONT_WAIT);
+	printk(KERN_INFO "received back %ld bytes from server\n", ret);
+	alloc_ret = bytes_to_ull(buff_recv);
+
+	ret = kstrtoull((const char *)buff_recv, 10, &alloc_ret);
+
+	if(alloc_ret) {
+		printk(KERN_INFO "tcp_rcv: %lld\n", alloc_ret);
+		return alloc_ret;
+	}
+	else {
+		//error here or throttle if cpu
+		return 0;
+	}
 
 	// rv = tcp_rcv(sockfd, buff_recv, 50, 0);
 	// printk(KERN_ALERT "[EC DBG] BYTES READ FROM SERVER RESPONSE: %d\n", rv);
@@ -151,7 +176,7 @@ int request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
 	// 	// }
 	// }
 	// kfree(serv_res);
-	return 0;
+//	return 0;
 }
 
 
@@ -223,7 +248,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_req -> is_mem = 2;
+	init_msg_req -> client_ip = 2130706433;
+	init_msg_req -> req_type = 2;
 	init_msg_req -> cgroup_id = mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt = 0; 
 

@@ -28,17 +28,15 @@
 int cgroup_fds[__MAX_CLIENT__];
 unsigned long memory_limit = 30000;
 unsigned long mem_reqs = 0;
-<<<<<<< HEAD
 unsigned long cpu_limit = 500000;
-=======
+
 int num_of_clients = 0;
 int num_of_agents = 0;
 
-
-
 int cgroups_root_pid[__MAX_CLIENT__];
 pthread_mutex_t mlock = PTHREAD_MUTEX_INITIALIZER;
->>>>>>> origin/mem
+
+ec_client_t* ec_cgroups[__MAX_CLIENT__];
 
 typedef int _bool;
 
@@ -54,15 +52,14 @@ typedef struct gcm_server {
 typedef struct ec_msg {
 	uint32_t client_ip;
     uint32_t cgroup_id;
-    _bool is_mem;
+    _bool req_type;
     uint64_t rsrc_amnt;
     _bool request;
 
 } ec_message_t;
 
-<<<<<<< HEAD
-ec_message_t* handle_req(char* buffer);
-=======
+
+
 typedef struct ec_reclaim_msg {
 
 	unsigned short cgroup_id;
@@ -82,9 +79,8 @@ typedef struct ec_cli
 	unsigned short cgroup_id;
 	//... Maybe it will need more info. Not now
 } ec_client_t;
->>>>>>> origin/mem
 
-ec_client_t* ec_cgroups[__MAX_CLIENT__];
+
 
 typedef struct serv_thread_args
 {
@@ -105,19 +101,21 @@ typedef struct agent
 
 agent_t* ec_agents[__MAXSERVERS__];
 
+ec_message_t* handle_req(char* buffer);
+
 unsigned long handle_req(char* buffer, int client_fd);
 
 void *handle_client_reqs(void* args);
 
 gcm_server_t* create_mt_server();
 
-<<<<<<< HEAD
 ec_message_t* handle_mem_req(ec_message_t* req);
 
 ec_message_t* handle_cpu_req(ec_message_t* req);
 
 ec_message_t* handle_init_req(ec_message_t* req);
-=======
+
+
 unsigned long handle_mem_req(ec_message_t* req, int client_fd);
 
 unsigned long reclaim_memory(int client_fd);
@@ -125,6 +123,6 @@ unsigned long reclaim_memory(int client_fd);
 void add_cgroup_id_to_ec(ec_message_t* req, int client_fd);
 
 void init_agents_connection(int num_of_agents);
->>>>>>> origin/mem
+
 
 #endif

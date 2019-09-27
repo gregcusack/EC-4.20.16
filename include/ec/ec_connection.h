@@ -19,7 +19,7 @@
 typedef struct ec_msg {
 	uint32_t client_ip;
 	uint32_t cgroup_id;
-	uint32_t is_mem;
+	uint32_t req_type;
 	uint64_t rsrc_amnt;
 	uint32_t request;
 
@@ -33,7 +33,7 @@ struct ec_connection {
 
 	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
 
-	int (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
+	unsigned long (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
 
 	struct socket* ec_cli;
 };

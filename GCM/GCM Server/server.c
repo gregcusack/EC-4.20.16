@@ -49,7 +49,7 @@ unsigned long reclaim_memory(int client_fd){
 			{
 				ec_reclaim_msg_t* reclaim_req = (ec_reclaim_msg_t*)malloc(sizeof(ec_reclaim_msg_t));
 				reclaim_req->cgroup_id = ec_cgroups[i]->cgroup_id;
-				reclaim_req->is_mem = 1;
+				reclaim_req->req_type = 1;
 				write(ec_agents[j]->sockfd, (char*)reclaim_req, sizeof(ec_reclaim_msg_t)); 
 			    printf("Message from server: "); 
 			    read(ec_agents[j]->sockfd, buffer, sizeof(buffer)); 
@@ -69,7 +69,7 @@ unsigned long handle_mem_req(ec_message_t* req, int client_fd) {
 	unsigned long ret = 0;
 	unsigned long fail = 0;
 
-	if (!req -> is_mem)
+	if (!req -> req_type)
 		return __FAILED__;
 
 	pthread_mutex_lock(&mlock);
@@ -124,7 +124,7 @@ unsigned long handle_req(char* buffer, int client_fd) {
 	unsigned long ret = __FAILED__;
 	printf("[dbg] maximum memory read from container: %lu\n", req->mem_limit);
 	//printf("[dbg] cgroup id of the container: %d\n", req->cgroup_id);
-	switch ( req -> is_mem ) {
+	switch ( req -> req_type ) {
 
 		case true:
 			ret = handle_mem_req(req, client_fd);
@@ -146,6 +146,7 @@ unsigned long handle_req(char* buffer, int client_fd) {
 	return ret;
 }
 
+//Greg: recall this is for one EC
 void *handle_client_reqs(void* args) {
 
 	int num_bytes, i;
@@ -162,6 +163,8 @@ void *handle_client_reqs(void* args) {
 
 	pthread_mutex_lock(&mlock);
 
+	//Greg: I think this is like our map of cgroups
+	//Greg: Think client here is number of cgroups within this EC
 	ec_cgroups[num_of_clients] = ec_cli_;
 	
 	num_of_clients ++;
