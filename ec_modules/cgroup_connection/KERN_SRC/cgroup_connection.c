@@ -137,7 +137,7 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(serv_req);
 
-	ret = tcp_rcv(sockfd, buff_recv, sizeof(buff_recv), MSG_DONT_WAIT);
+	ret = tcp_rcv(sockfd, buff_recv, sizeof(buff_recv), MSG_DONTWAIT);
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
 	alloc_ret = bytes_to_ull(buff_recv);
 
