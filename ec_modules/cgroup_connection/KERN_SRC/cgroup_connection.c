@@ -107,20 +107,16 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	int i;
 	ec_message_t* serv_req;
 	ec_message_t* serv_res;
-	unsigned long long alloc_ret = 0;
-//	uint64_t alloc_ret = 0;
-//	char alloc_ret[64];
 	unsigned long ret;
-	int rv;
 	struct socket* sockfd = NULL;
-	unsigned char buff_recv[8] = {0};
+	uint64_t to_return;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
 	if (cfs_b != NULL && memcg == NULL) {
 		serv_req -> req_type = 0;
 		serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
-		serv_req -> rsrc_amnt = 1000; // this is arbitary
+		serv_req -> rsrc_amnt = cfs_b->quota; //1000; // this is arbitary
 		sockfd = cfs_b->ecc->ec_cli;
 		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
 	} else if(cfs_b == NULL && memcg != NULL) {
@@ -137,46 +133,41 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	kfree(serv_req);
 
-	ret = tcp_rcv(sockfd, buff_recv, sizeof(buff_recv), MSG_DONTWAIT);
+	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), MSG_DONTWAIT);
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
-	alloc_ret = bytes_to_ull(buff_recv);
 
-	ret = kstrtoull((const char *)buff_recv, 10, &alloc_ret);
-
-	if(alloc_ret) {
-		printk(KERN_INFO "tcp_rcv: %lld\n", alloc_ret);
-		return alloc_ret;
+	if(!serv_res) {
+		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
+		to_return = 0;
+	}
+	printk(KERN_ALERT "[EC MESSAGE] REQUEST Type: %d\n", serv_res->req_type);
+	if (serv_res -> req_type == 0) {
+		printk(KERN_ALERT "[EC MESSAGE] HANDLE CPU KERNEL CASE HERE\n");
+		if(serv_res->rsrc_amnt > 0) {
+			printk(KERN_INFO "rx amnt: %lld\n", serv_res->rsrc_amnt);
+			to_return = serv_res->rsrc_amnt;
+		}
+		else {
+			printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server <= 0. bummer!\n");
+			//TODO: Throttle or something
+			to_return = 10000000; //avoid crashing for now, but should throttle?
+		}
+	}
+	else if (serv_res -> req_type == 1) {
+		printk(KERN_ALERT "[EC MESSAGE] HANDLE MEM KERNEL CASE HERE\n");
+		if ( (serv_res->rsrc_amnt) > (serv_req->rsrc_amnt)) {
+			printk(KERN_ALERT"[EC DBG] mem_charge: we read the data from the GCM and we got: %lld\n", serv_res->rsrc_amnt);
+		 	// TODO: This is poor design but right now, returning -1 triggers a read again in memcontrol.c
+		 	to_return = -1;
+		 }
 	}
 	else {
-		//error here or throttle if cpu
-		return 0;
+		printk(KERN_ALERT "[EC ERROR] request function: INVALID SERVER RESONSE\n");
+		to_return = 0;
 	}
-
-	// rv = tcp_rcv(sockfd, buff_recv, 50, 0);
-	// printk(KERN_ALERT "[EC DBG] BYTES READ FROM SERVER RESPONSE: %d\n", rv);
-	// if (rv == 0) {
-	// 	printk(KERN_ALERT "[EC ERROR] NO RESPONSE FROM SERVER\n");
-	//  	return 0;
-	// }
-	// serv_res = (ec_message_t*) buff_recv;
-	// if (serv_res != NULL) {
-	// 	printk(KERN_ALERT "[EC MESSAGE] REQUEST Type: %d\n", serv_res->is_mem);
-	// 	// if (serv_res -> is_mem == 0) {
-	// 	// 	printk(KERN_ALERT "[EC MESSAGE] HANDLE CPU KERNEL CASE HERE\n");
-	// 	// } else if (serv_res -> is_mem == 1) {
-	// 	// 	printk(KERN_ALERT "[EC MESSAGE] HANDLE MEM KERNEL CASE HERE\n");
-	// 	// 	if ( (serv_res->rsrc_amnt) > (serv_req->rsrc_amnt)) {
-	// 	// 		printk(KERN_ALERT"[EC DBG] mem_charge: we read the data from the GCM and we got: %lld\n", serv_res->rsrc_amnt);
-	// 	// 		// TODO: This is poor design but right now, returning -1 triggers a read again in memcontrol.c
-	// 	// 		return -1;
-	// 	// 	}
-	// 	// } else {
-	// 	// 	printk(KERN_ALERT "[EC ERROR] request function: INVALID SERVER RESONSE\n");
-	// 	// 	return 0;
-	// 	// }
-	// }
-	// kfree(serv_res);
-//	return 0;
+	kfree(serv_res);
+	return to_return;
 }
 
 
