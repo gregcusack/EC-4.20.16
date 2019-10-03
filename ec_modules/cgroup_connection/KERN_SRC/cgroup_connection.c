@@ -123,7 +123,7 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 		//unsigned long new_max;
 		serv_req -> req_type = 1;
 		serv_req -> cgroup_id = memcg->id.id;
-		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg); 
+		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
 		sockfd = memcg->ecc->ec_cli;
 	}
 	if (sockfd == NULL) {
@@ -131,7 +131,6 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	 	return 0;
 	}
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-	kfree(serv_req);
 
 	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), MSG_DONTWAIT);
@@ -156,16 +155,21 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	}
 	else if (serv_res -> req_type == 1) {
 		printk(KERN_ALERT "[EC MESSAGE] HANDLE MEM KERNEL CASE HERE\n");
-		if ( (serv_res->rsrc_amnt) > (serv_req->rsrc_amnt)) {
+		if ( (serv_res->rsrc_amnt) > (serv_req->rsrc_amnt)) { //check to see if increased max memory limit
+			printk(KERN_INFO "[EC MSG] successfull got more memory from GCM\n");
+			to_return = serv_res->rsrc_amnt;
+		}
+		else {
 			printk(KERN_ALERT"[EC DBG] mem_charge: we read the data from the GCM and we got: %lld\n", serv_res->rsrc_amnt);
-		 	// TODO: This is poor design but right now, returning -1 triggers a read again in memcontrol.c
-		 	to_return = -1;
-		 }
+			// TODO: This is poor design but right now, returning 0 triggers a read again in memcontrol.c
+			to_return = 0;
+		}
 	}
 	else {
 		printk(KERN_ALERT "[EC ERROR] request function: INVALID SERVER RESONSE\n");
 		to_return = 0;
 	}
+	kfree(serv_req);
 	kfree(serv_res);
 	return to_return;
 }

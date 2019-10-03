@@ -2175,7 +2175,6 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool oomed = false;
 	enum oom_status oom_status;
 	unsigned long new;
-	int request_function_ret;
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2203,21 +2202,19 @@ retry:
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
-		request_function_ret = memcg -> ecc -> request_function(NULL, memcg);
-		if (request_function_ret == -1) {
+		unsigned long new_max;
+		int ret;
+		new_max = memcg -> ecc -> request_function(NULL, memcg);
+		if (new_max != 0) {
+			ret = mem_cgroup_resize_max(memcg, new_max, false);
+			if(ret < 0) {
+				printk(KERN_ERROR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
+				///uhhhh no clue what to do here
+			}
+		}
+		else {
 			goto retry;
 		}
-		//rv = memcg -> ecc -> read(memcg -> ecc -> ec_cli, (char*) &new_max, sizeof(unsigned long) + 1, 0);
-
-		// if ( (rv > 0) && (new_max > mem_req->rsrc_amnt) ) 
-		// {
-		// 	printk(KERN_ALERT"[dbg] try_charge: we read the data from the GCM and we got: %ld\n", new_max);
-		// 	mem_cgroup_resize_max(memcg, new_max, false);
-		// 	//kfree(mem_req);
-		// 	goto retry;
-		// }
-		//else
-		//	printk(KERN_ALERT"[dbg] tray_charge: This is why we did not charge max. new_max: %lu and previous memory max: %lu\n", new_max, mem_req -> mem_limit);
 	}
 
 	/*
