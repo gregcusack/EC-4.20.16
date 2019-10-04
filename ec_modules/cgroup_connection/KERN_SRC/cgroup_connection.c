@@ -174,6 +174,25 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	return to_return;
 }
 
+int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
+	if(!init_msg_req || !init_msg_res) {
+		printk(KERN_ERR "[EC ERROR] init_msg_req or init_msg_res in validate_init() == NULL\n");
+		return  __BADARG;
+	}
+
+
+
+	if(init_msg_req->cgroup_id != init_msg_res->cgroup_id
+			|| init_msg_req->req_type != init_msg_res->req_type
+			|| init_msg_req->rsrc_amnt != init_msg_res->rsrc_amnt
+			|| (!init_msg_req->request) != init_msg_res->request) {
+		printk(KERN_ERR "[EC ERROR] Init error, received wrong info back from server on init\n");
+		return __BADARG;
+	}
+	return 0;
+
+}
+
 
 int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
@@ -246,10 +265,10 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	init_msg_req -> client_ip = 2130706433;
 	init_msg_req -> req_type = 2;
 	init_msg_req -> cgroup_id = mem_cgroup_id(memcg);
-	init_msg_req -> rsrc_amnt = 0; 
+	init_msg_req -> rsrc_amnt = 0;
+	init_msg_req -> request = 1;
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
-	kfree(init_msg_req);
 
 	recv = tcp_rcv(sockfd_cli, buff_in, 64, 0);
 	printk(KERN_ALERT "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
@@ -257,6 +276,14 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
 	}
+
+
+	if(validate_init(init_msg_req, (ec_message_t*) buff_in)) {
+		printk(KERN_ALERT "[EC ERROR] Response from server did not match what init sent\n");
+		return __BADARG;
+	}
+	kfree(init_msg_req);
+
 	// TODO: Add confirmation that the init response from the server is correct?
 
 	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
