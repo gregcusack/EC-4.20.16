@@ -2208,7 +2208,7 @@ retry:
 		if (new_max != 0) {
 			ret = mem_cgroup_resize_max(memcg, new_max, false);
 			if(ret < 0) {
-				printk(KERN_ERROR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
 				///uhhhh no clue what to do here
 			}
 		}
