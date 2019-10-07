@@ -96,11 +96,26 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 			}
 //			goto read_again;
 		}
-	return len == length ? 0:len;
+	return len;//len == length ? 0:len;
 }
 
 uint64_t bytes_to_ull(char *bytes) {
 	return *((uint64_t*)bytes);
+}
+
+unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_message_t *serv_res, int flags) {
+	unsigned long ret = 0;
+	if (sockfd == NULL) {
+		printk(KERN_ALERT "[EC ERROR] Request Function: Socked FD Error\n");
+		return 0;
+	}
+	if(serv_req == NULL || serv_res == NULL) {
+		printk(KERN_ALERT "[EC ERROR] Request Function: serv_req or serv_res == NULL\n");
+		return 0;
+	}
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), flags);
+	return ret;
 }
 
 unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg){
@@ -112,6 +127,7 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	uint64_t to_return;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
 	if (cfs_b != NULL && memcg == NULL) {
 		serv_req -> req_type = 0;
@@ -119,22 +135,37 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 		serv_req -> rsrc_amnt = cfs_b->quota; //1000; // this is arbitary
 		sockfd = cfs_b->ecc->ec_cli;
 		// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
+		ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+
 	} else if(cfs_b == NULL && memcg != NULL) {
 		//unsigned long new_max;
 		serv_req -> req_type = 1;
 		serv_req -> cgroup_id = memcg->id.id;
 		serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
 		sockfd = memcg->ecc->ec_cli;
+		ret = read_write(sockfd, serv_req, serv_res, 0);
 	}
-	if (sockfd == NULL) {
-		printk(KERN_ALERT "[EC ERROR] Request Function: Socked FD Error\n");
-	 	return 0;
+	else {
+		printk(KERN_ERR "both cfs_b and memcg == NULL or both set...idk what to do\n");
+		ret = 0;
+		return 0;
 	}
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+//	if (sockfd == NULL) {
+//		printk(KERN_ALERT "[EC ERROR] Request Function: Socked FD Error\n");
+//	 	return 0;
+//	}
 
-	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), MSG_DONTWAIT);
+//	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+//	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+//	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), 0);
+
+
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
+	if(ret <= 0) {
+		printk(KERN_INFO "RX failed\n");
+		to_return = 0;
+		goto failed;
+	}
 
 	if(!serv_res) {
 		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
@@ -169,6 +200,8 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 		printk(KERN_ALERT "[EC ERROR] request function: INVALID SERVER RESONSE\n");
 		to_return = 0;
 	}
+
+failed:
 	kfree(serv_req);
 	kfree(serv_res);
 	return to_return;

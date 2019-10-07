@@ -2201,22 +2201,6 @@ retry:
 
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
-	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
-		unsigned long new_max;
-		int ret;
-		new_max = memcg -> ecc -> request_function(NULL, memcg);
-		if (new_max != 0) {
-			ret = mem_cgroup_resize_max(memcg, new_max, false);
-			if(ret < 0) {
-				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
-				///uhhhh no clue what to do here
-			}
-		}
-		else {
-			goto retry;
-		}
-	}
-
 	/*
 	 * Unlike in global OOM situations, memcg is not in a physical
 	 * memory shortage.  Allow dying and OOM-killed tasks to
@@ -2288,6 +2272,22 @@ retry:
 
 	if (fatal_signal_pending(current))
 		goto force;
+
+	//ec
+	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
+		unsigned long new_max;
+		int ret;
+		new_max = memcg -> ecc -> request_function(NULL, memcg);
+		if (new_max != 0) {
+			ret = mem_cgroup_resize_max(memcg, new_max, false);
+			if(ret < 0) {
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
+				///uhhhh no clue what to do here
+			}
+			goto retry;
+		}
+	}
+
 
 	/*
 	 * keep retrying as long as the memcg oom killer is able to make
