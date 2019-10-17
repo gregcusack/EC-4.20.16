@@ -178,8 +178,13 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 			printk(KERN_INFO "rx amnt: %lld\n", serv_res->rsrc_amnt);
 			to_return = serv_res->rsrc_amnt;
 		}
+		else if(serv_res->rsrc_amnt == 0) {
+			printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server == 0. Throttle!\n");
+			//TODO: Throttle or something
+			to_return = 0; //test. hopefully works?
+		}
 		else {
-			printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server <= 0. bummer!\n");
+			printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server < 0. bummer!\n");
 			//TODO: Throttle or something
 			to_return = 10000000; //avoid crashing for now, but should throttle?
 		}
@@ -206,6 +211,66 @@ failed:
 	kfree(serv_res);
 	return to_return;
 }
+
+uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice) {
+	ec_message_t* serv_req;
+	ec_message_t* serv_res;
+	unsigned long ret;
+	struct socket* sockfd = NULL;
+	uint64_t to_return;
+
+	if(!cfs_b) {
+		printk(KERN_ERR "acquire cloud global(): both cfs_b == NULL...idk what to do\n");
+		ret = 0;
+		return 0;
+	}
+
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+
+	serv_req -> request = 1;
+	serv_req -> req_type = 3;	//slice
+	serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
+	serv_req -> rsrc_amnt = slice; //ask gcm for whatever a typical slice is (5ms)
+	sockfd = cfs_b->ecc->ec_cli;
+	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
+	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+
+	printk(KERN_INFO "received back %ld bytes from server\n", ret);
+	if(ret <= 0) {
+		printk(KERN_INFO "RX failed\n");
+		to_return = 0;
+		goto failed;
+	}
+
+	if(!serv_res) {
+		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
+		to_return = 0;
+	}
+	printk(KERN_ALERT "[EC MESSAGE] REQUEST Type: %d\n", serv_res->req_type);
+	if(serv_res->req_type != 3) {
+		printk(KERN_ALERT "[EC ERROR] Received wrong req_type back from server....\n");
+	}
+
+	if(serv_res->rsrc_amnt > slice || serv_res->rsrc_amnt < 0) {
+		printk(KERN_ALERT "[EC ERROR] Received slice size outside expected range. rx slice: %lld\n", serv_res->rsrc_amnt);
+		//for testing. just let is slide for now
+		to_return = slice;
+	}
+	else {
+		to_return = serv_res->rsrc_amnt;
+	}
+
+failed:
+	kfree(serv_req);
+	kfree(serv_res);
+	return to_return;
+}
+
+
+
+
+
 
 int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 	if(!init_msg_req || !init_msg_res) {

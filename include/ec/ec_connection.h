@@ -15,6 +15,7 @@
 #include <linux/net.h>
 #include <linux/inet.h>
 #include <linux/memcontrol.h>
+//#include <stdint.h>
 
 typedef struct ec_msg {
 	uint32_t client_ip;
@@ -34,6 +35,8 @@ struct ec_connection {
 	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
 
 	unsigned long (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
+
+	uint64_t (*acquire_cloud_global_slice)(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
 	struct socket* ec_cli;
 };

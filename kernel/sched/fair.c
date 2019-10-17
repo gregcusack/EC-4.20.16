@@ -4266,7 +4266,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 
 	now = sched_clock_cpu(smp_processor_id());
 	// This logic is only for an "elastic" container..
-	cfs_b->runtime = cfs_b->quota;
+//	cfs_b->runtime = cfs_b->quota;
 	if(cfs_b->is_ec) {
 		ret = cfs_b->ecc->request_function(cfs_b, NULL);
 		if (!ret) {
@@ -4320,6 +4320,19 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 			cfs_b->runtime -= amount;
 			cfs_b->idle = 0;
 		}
+		//else cfs_b->runtime == 0
+		/* EC */
+		else if(cfs_b->is_ec) { //if cfs_b->runtime <= 0 && is an EC, make request
+			ret = cfs_b->ecc->acquire_cloud_global_slize(cfs_b, sched_cfs_bandwidth_slice());
+			if (!ret) {
+				//if ret = 0, means throttle
+				printk(KERN_ALERT "[ECC DBG] assign_cfs(): EC cpu slice function returned error %ld..\n", ret);
+			}
+	//		printk("ret: %ld\n", ret);
+			amount = min(ret, min_amount);
+			cfs_b->idle = 0;
+		}
+
 	}
 	expires_seq = cfs_b->expires_seq;
 	expires = cfs_b->runtime_expires;
