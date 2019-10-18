@@ -114,7 +114,10 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 		return 0;
 	}
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	printk(KERN_INFO "sent. waiting for rx\n");
 	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), flags);
+	printk(KERN_INFO "[EC MESSAGE] serv_res->rsrc_amnt: %lld\n", serv_res->rsrc_amnt);
+	printk(KERN_INFO "received. returning ret: %ld\n", ret);
 	return ret;
 }
 
@@ -125,6 +128,9 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 	unsigned long ret;
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
+
+	//test
+//	return cfs_b->quota;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
@@ -212,18 +218,22 @@ failed:
 	return to_return;
 }
 
-uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice) {
+uint64_t acquire_cloud_global_slice(struct cfs_bandwidth *cfs_b, uint64_t slice) {
 	ec_message_t* serv_req;
 	ec_message_t* serv_res;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
 
+	return 0;
+
 	if(!cfs_b) {
-		printk(KERN_ERR "acquire cloud global(): both cfs_b == NULL...idk what to do\n");
+		printk(KERN_ERR "[EC ERROR SLICE] acquire cloud global(): both cfs_b == NULL...idk what to do\n");
 		ret = 0;
 		return 0;
 	}
+
+	printk(KERN_INFO "[EC MESSAGE SLICE] in acquire slice fcn\n");
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
@@ -235,25 +245,24 @@ uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice)
 	sockfd = cfs_b->ecc->ec_cli;
 	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
 	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
-
-	printk(KERN_INFO "received back %ld bytes from server\n", ret);
+	printk(KERN_INFO "[EC MESSAGE SLICE] received back %ld bytes from server\n", ret);
 	if(ret <= 0) {
-		printk(KERN_INFO "RX failed\n");
+		printk(KERN_ERR "[EC ERROR SLICE] RX failed\n");
 		to_return = 0;
 		goto failed;
 	}
 
 	if(!serv_res) {
-		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
+		printk(KERN_ALERT "[EC ERROR SLICE] Received back NULL from server!\n");
 		to_return = 0;
 	}
-	printk(KERN_ALERT "[EC MESSAGE] REQUEST Type: %d\n", serv_res->req_type);
+	printk(KERN_ALERT "[EC MESSAGE SLICE] REQUEST Type: %d\n", serv_res->req_type);
 	if(serv_res->req_type != 3) {
-		printk(KERN_ALERT "[EC ERROR] Received wrong req_type back from server....\n");
+		printk(KERN_ALERT "[EC ERROR SLICE] Received wrong req_type back from server....\n");
 	}
 
 	if(serv_res->rsrc_amnt > slice || serv_res->rsrc_amnt < 0) {
-		printk(KERN_ALERT "[EC ERROR] Received slice size outside expected range. rx slice: %lld\n", serv_res->rsrc_amnt);
+		printk(KERN_ALERT "[EC ERROR SLICE] Received slice size outside expected range. rx slice: %lld\n", serv_res->rsrc_amnt);
 		//for testing. just let is slide for now
 		to_return = slice;
 	}
@@ -266,10 +275,6 @@ failed:
 	kfree(serv_res);
 	return to_return;
 }
-
-
-
-
 
 
 int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
@@ -394,12 +399,14 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
 	cfs_b->parent_tg = tg;
+	cfs_b->gcm_runtime = 0;
 
 	if(!memcg)
 		return __BADARG;
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_function = &request_function;
+	_ec_c -> acquire_cloud_global_slice = &acquire_cloud_global_slice;
 	_ec_c -> ec_cli = sockfd_cli;
 	cfs_b->ecc = _ec_c;
 

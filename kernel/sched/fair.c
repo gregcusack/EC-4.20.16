@@ -4305,6 +4305,7 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 	struct cfs_bandwidth *cfs_b = tg_cfs_bandwidth(tg);
 	u64 amount = 0, min_amount, expires;
 	int expires_seq;
+	u64 ret = 0;
 
 	/* note: this is a positive sum as runtime_remaining <= 0 */
 	min_amount = sched_cfs_bandwidth_slice() - cfs_rq->runtime_remaining;
@@ -4323,14 +4324,20 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 		//else cfs_b->runtime == 0
 		/* EC */
 		else if(cfs_b->is_ec) { //if cfs_b->runtime <= 0 && is an EC, make request
-			ret = cfs_b->ecc->acquire_cloud_global_slize(cfs_b, sched_cfs_bandwidth_slice());
+			ret = cfs_b->ecc->acquire_cloud_global_slice(cfs_b, sched_cfs_bandwidth_slice());
 			if (!ret) {
 				//if ret = 0, means throttle
-				printk(KERN_ALERT "[ECC DBG] assign_cfs(): EC cpu slice function returned error %ld..\n", ret);
+				printk(KERN_INFO "[ECC DBG] assign_cfs(): EC cpu slice function returned 0. THROTTLE TIME %lld.\n", ret);
 			}
 	//		printk("ret: %ld\n", ret);
 			amount = min(ret, min_amount);
 			cfs_b->idle = 0;
+
+			//this needs to be put in for when ret is 0 (aka nothing back from GCM)
+//			else {
+//				amount = min(ret, min_amount);
+//				cfs_b->idle = 0;
+//			}
 		}
 
 	}
