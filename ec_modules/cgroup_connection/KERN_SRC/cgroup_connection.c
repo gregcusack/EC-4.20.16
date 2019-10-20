@@ -114,10 +114,7 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 		return 0;
 	}
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-	printk(KERN_INFO "sent. waiting for rx\n");
 	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), flags);
-	printk(KERN_INFO "[EC MESSAGE] serv_res->rsrc_amnt: %lld\n", serv_res->rsrc_amnt);
-	printk(KERN_INFO "received. returning ret: %ld\n", ret);
 	return ret;
 }
 
@@ -182,7 +179,16 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 		printk(KERN_ALERT "[EC MESSAGE] HANDLE CPU KERNEL CASE HERE\n");
 		if(serv_res->rsrc_amnt > 0) {
 			printk(KERN_INFO "rx amnt: %lld\n", serv_res->rsrc_amnt);
+			//case where gcm return extra bw to be consume by local procs
+			if(serv_res->rsrc_amnt > cfs_b->quota) {
+				cfs_b->gcm_local_runtime = serv_res->rsrc_amnt - cfs_b->quota;
+				serv_res->rsrc_amnt -= cfs_b->gcm_local_runtime;
+			}
+			else {
+				cfs_b->gcm_local_runtime = 0;
+			}
 			to_return = serv_res->rsrc_amnt;
+
 		}
 		else if(serv_res->rsrc_amnt == 0) {
 			printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server == 0. Throttle!\n");
@@ -399,7 +405,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
 	cfs_b->parent_tg = tg;
-	cfs_b->gcm_runtime = 0;
+	cfs_b->gcm_local_runtime = 0;
 
 	if(!memcg)
 		return __BADARG;
