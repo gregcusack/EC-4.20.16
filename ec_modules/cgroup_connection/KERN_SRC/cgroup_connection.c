@@ -318,13 +318,6 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 		return  __BADARG;
 	}
 
-	printk(KERN_INFO "req cg_id, res cg_id: %d, %d\n", init_msg_req->cgroup_id, init_msg_res->cgroup_id);
-	printk(KERN_INFO "req type, res type: %d, %d\n", init_msg_req->req_type, init_msg_res->req_type);
-	printk(KERN_INFO "req amnt, res amnt: %lld, %lld\n", init_msg_req->rsrc_amnt, init_msg_res->rsrc_amnt);
-	printk(KERN_INFO "req, res: %d, %d\n", init_msg_req->request, init_msg_res->request);
-
-
-
 	if(init_msg_req->cgroup_id != init_msg_res->cgroup_id
 			|| init_msg_req->req_type != init_msg_res->req_type
 			|| init_msg_req->rsrc_amnt != init_msg_res->rsrc_amnt
