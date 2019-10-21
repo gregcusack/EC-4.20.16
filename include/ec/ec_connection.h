@@ -18,6 +18,7 @@
 //#include <stdint.h>
 
 typedef struct ec_msg {
+	uint32_t ec_id;
 	uint32_t client_ip;
 	uint32_t cgroup_id;
 	uint32_t req_type;
@@ -25,6 +26,14 @@ typedef struct ec_msg {
 	uint32_t request;
 
 } ec_message_t;
+
+//typedef struct ec_init_msg {
+//	uint32_t ec_id;
+//	uint32_t client_ip;
+//	uint32_t cgroup_id;
+//	uint32_t req_type;
+//
+//} ec_init_message_t;
 
 struct cfs_bandwidth;
 
@@ -34,14 +43,18 @@ struct ec_connection {
 
 	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
 
-	unsigned long (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
+//	unsigned long (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
+
+	unsigned long (*request_memory)(struct mem_cgroup *memcg);
+
+	unsigned long (*request_cpu)(struct cfs_bandwidth *cfs_b);
 
 	uint64_t (*acquire_cloud_global_slice)(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
 	struct socket* ec_cli;
 };
 
-extern int (*ec_connect_)(char*, int, int);
+extern int (*ec_connect_)(char*, int, int, int);
 
 //struct ec_payload {
 ////	uint16_t group_id;

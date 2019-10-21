@@ -8,4 +8,4 @@ echo "container id: "$CONTAINER_ID""
 echo "container init pid: "$CONTAINER_PID""
 
 export KERNEL_HOME="../"
-../ec_syscalls/sys_connect "$CONTAINER_PID"
+../ec_syscalls/sys_connect "$CONTAINER_PID" "1"
