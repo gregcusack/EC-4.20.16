@@ -125,6 +125,7 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 	unsigned long ret;
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
+//	uint32_t throttle_avg;
 
 	//test
 //	return cfs_b->quota;
@@ -138,11 +139,22 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 		to_return = 0;
 		goto failed;
 	}
-	serv_req -> req_type = 0;
-	serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
-	serv_req -> rsrc_amnt = cfs_b->quota; //1000; // this is arbitary
-	sockfd = cfs_b->ecc->ec_cli;
+//	throttle_avg = (uint32_t)(cfs_b->throttled_time)/((uint32_t) cfs_b->nr_throttled);
+	serv_req -> ec_id			= cfs_b->ecc->ec_id;
+	serv_req -> req_type 		= 0;
+	serv_req -> cgroup_id 		= cfs_b->parent_tg->css.id;
+	serv_req -> rsrc_amnt 		= cfs_b->quota; //1000; // this is arbitary
+
+	serv_req -> request			= cfs_b->runtime;
+	serv_req -> slice_succeed	= cfs_b->nr_periods;
+	serv_req -> slice_fail		= cfs_b->nr_throttled;
+
+//	serv_req -> slice_succeed 	= cfs_b->get_slice_succeed_count;
+//	serv_req -> slice_succeed	= throttle_avg;
+//	serv_req -> slice_fail 		= cfs_b->get_slice_fail_count;
+	sockfd 						= cfs_b->ecc->ec_cli;
 	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
+//	printk(KERN_INFO "Throttle info: %d, %d, %lld\n", cfs_b->nr_periods, cfs_b->nr_throttled, cfs_b->throttled_time);
 	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
@@ -212,10 +224,14 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 	serv_req -> request = 1;
 
 	//unsigned long new_max;
-	serv_req -> req_type = 1;
-	serv_req -> cgroup_id = memcg->id.id;
-	serv_req -> rsrc_amnt = mem_cgroup_get_max(memcg);
-	sockfd = memcg->ecc->ec_cli;
+	serv_req -> ec_id			= memcg->ecc->ec_id;
+	serv_req -> client_ip 		= 2130706433;
+	serv_req -> req_type 		= 1;
+	serv_req -> cgroup_id 		= memcg->id.id;
+	serv_req -> rsrc_amnt 		= mem_cgroup_get_max(memcg);
+	serv_req -> slice_succeed 	= 0;
+	serv_req -> slice_fail 		= 0;
+	sockfd 						= memcg->ecc->ec_cli;
 	ret = read_write(sockfd, serv_req, serv_res, 0);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
@@ -224,6 +240,8 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 		to_return = 0;
 		goto failed;
 	}
+
+	printk(KERN_ALERT "%d, %d, %d, %d, %lld, %d, %d, %d\n", serv_res->ec_id, serv_res->client_ip, serv_res->cgroup_id, serv_res->req_type, serv_res->rsrc_amnt, serv_res->request, serv_res->slice_succeed, serv_res->slice_fail);
 
 	if(!serv_res) {
 		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
@@ -341,7 +359,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
 
-	ec_message_t* init_msg_req;
+	ec_message_t *init_msg_req, *init_msg_res;
 	char buff_in[64];
 	//ec_message_t* init_msg_res;
 	int ret, recv;
@@ -398,24 +416,26 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_req -> ec_id 		= 1;
 	init_msg_req -> client_ip 	= 2130706433;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt 	= 0;
 	init_msg_req -> request 	= 1;
+	init_msg_req -> slice_succeed = 0;
+	init_msg_req -> slice_fail	  = 0;
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
 
-	recv = tcp_rcv(sockfd_cli, buff_in, 64, 0);
 	printk(KERN_ALERT "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
 	if (recv == 0) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
 	}
 
-
-	if(validate_init(init_msg_req, (ec_message_t*) buff_in)) {
+	if(validate_init(init_msg_req, init_msg_res)) {
 		printk(KERN_ALERT "[EC ERROR] Response from server did not match what init sent\n");
 		return __BADARG;
 	}
@@ -444,6 +464,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 	_ec_c -> request_cpu					= &request_cpu;
 	_ec_c -> acquire_cloud_global_slice 	= &acquire_cloud_global_slice;
 	_ec_c -> ec_cli 						= sockfd_cli;
+	_ec_c -> ec_id							= init_msg_res->ec_id;
 	cfs_b->ecc 								= _ec_c;
 
 	if(!cfs_b->ecc) {

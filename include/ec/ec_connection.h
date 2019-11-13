@@ -24,6 +24,8 @@ typedef struct ec_msg {
 	uint32_t req_type;
 	uint64_t rsrc_amnt;
 	uint32_t request;
+	uint32_t slice_succeed;
+	uint32_t slice_fail;
 
 } ec_message_t;
 
@@ -52,6 +54,8 @@ struct ec_connection {
 	uint64_t (*acquire_cloud_global_slice)(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
 	struct socket* ec_cli;
+
+	int ec_id;
 };
 
 extern int (*ec_connect_)(char*, int, int, int);

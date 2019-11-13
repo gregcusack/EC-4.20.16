@@ -9,12 +9,13 @@ int main(int argc, char const *argv[]) {
 		perror("specific pid, parent flag\n");
 		exit(-1);
 	}
-	int ret, ec_id;
+	int ret, ec_id, port;
 	int pid = strtol(argv[1], NULL, 10);
 	//int parent_flag = strtol(argv[2], NULL, 10);
-	ec_id = strtol(argv[2], NULL, 10);
+	port = strtol(argv[2], NULL, 10);
+	ec_id = strtol(argv[3], NULL, 10);
 
-	ret = syscall(__NR_SYSCALL__, "127.0.0.1", 4444, pid, ec_id);
+	ret = syscall(__NR_SYSCALL__, "127.0.0.1", port, pid, ec_id);
 
 	printf("[dbg] Syscall returned %d . Bye\n", ret);
 
