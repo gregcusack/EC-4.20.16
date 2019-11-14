@@ -2,8 +2,7 @@
 
 CONTAINER_NAME=$1
 PORT=$2
-EC_ID=$3
-QUOTA=$(($4 * 1000))
+QUOTA=$(($3 * 1000))
 echo $QUOTA
 
 CONTAINER_ID="$(sudo docker run -d --cpu-period=100000 --cpu-quota=$QUOTA --cpuset-cpus 0 "$CONTAINER_NAME")"

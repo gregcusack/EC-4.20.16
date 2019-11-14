@@ -127,9 +127,6 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 	uint64_t to_return;
 //	uint32_t throttle_avg;
 
-	//test
-//	return cfs_b->quota;
-
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> request = 1;
@@ -139,22 +136,15 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 		to_return = 0;
 		goto failed;
 	}
-//	throttle_avg = (uint32_t)(cfs_b->throttled_time)/((uint32_t) cfs_b->nr_throttled);
-	serv_req -> ec_id			= cfs_b->ecc->ec_id;
-	serv_req -> req_type 		= 0;
-	serv_req -> cgroup_id 		= cfs_b->parent_tg->css.id;
-	serv_req -> rsrc_amnt 		= cfs_b->quota; //1000; // this is arbitary
+	serv_req -> req_type 			= 0;
+	serv_req -> cgroup_id 			= cfs_b->parent_tg->css.id;
+	serv_req -> rsrc_amnt 			= cfs_b->quota;
 
-	serv_req -> request			= cfs_b->runtime;
-	serv_req -> slice_succeed	= cfs_b->nr_periods;
-	serv_req -> slice_fail		= cfs_b->nr_throttled;
+	serv_req -> request				= 1;
+	serv_req -> runtime_remaining 	= cfs_b->runtime;
 
-//	serv_req -> slice_succeed 	= cfs_b->get_slice_succeed_count;
-//	serv_req -> slice_succeed	= throttle_avg;
-//	serv_req -> slice_fail 		= cfs_b->get_slice_fail_count;
-	sockfd 						= cfs_b->ecc->ec_cli;
+	sockfd 							= cfs_b->ecc->ec_cli;
 	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
-//	printk(KERN_INFO "Throttle info: %d, %d, %lld\n", cfs_b->nr_periods, cfs_b->nr_throttled, cfs_b->throttled_time);
 	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
@@ -221,17 +211,15 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_req -> request = 1;
 
 	//unsigned long new_max;
-	serv_req -> ec_id			= memcg->ecc->ec_id;
-	serv_req -> client_ip 		= 2130706433;
-	serv_req -> req_type 		= 1;
-	serv_req -> cgroup_id 		= memcg->id.id;
-	serv_req -> rsrc_amnt 		= mem_cgroup_get_max(memcg);
-	serv_req -> slice_succeed 	= 0;
-	serv_req -> slice_fail 		= 0;
-	sockfd 						= memcg->ecc->ec_cli;
+	serv_req -> client_ip 			= 2130706433;
+	serv_req -> req_type 			= 1;
+	serv_req -> cgroup_id 			= memcg->id.id;
+	serv_req -> rsrc_amnt 			= mem_cgroup_get_max(memcg);
+	serv_req -> runtime_remaining 	= 0;
+	sockfd 							= memcg->ecc->ec_cli;
+	serv_req -> request 			= 1;
 	ret = read_write(sockfd, serv_req, serv_res, 0);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
@@ -241,7 +229,7 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 		goto failed;
 	}
 
-	printk(KERN_ALERT "%d, %d, %d, %d, %lld, %d, %d, %d\n", serv_res->ec_id, serv_res->client_ip, serv_res->cgroup_id, serv_res->req_type, serv_res->rsrc_amnt, serv_res->request, serv_res->slice_succeed, serv_res->slice_fail);
+	printk(KERN_ALERT "%d, %d, %d, %lld, %d, %lld\n", serv_res->client_ip, serv_res->cgroup_id, serv_res->req_type, serv_res->rsrc_amnt, serv_res->request, serv_res->runtime_remaining);
 
 	if(!serv_res) {
 		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
@@ -271,65 +259,6 @@ failed:
 	return to_return;
 }
 
-uint64_t acquire_cloud_global_slice(struct cfs_bandwidth *cfs_b, uint64_t slice) {
-	ec_message_t* serv_req;
-	ec_message_t* serv_res;
-	unsigned long ret;
-	struct socket* sockfd = NULL;
-	uint64_t to_return;
-
-	return 0;
-
-	if(!cfs_b) {
-		printk(KERN_ERR "[EC ERROR SLICE] acquire cloud global(): both cfs_b == NULL...idk what to do\n");
-		ret = 0;
-		return 0;
-	}
-
-	printk(KERN_INFO "[EC MESSAGE SLICE] in acquire slice fcn\n");
-
-	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-
-	serv_req -> request = 1;
-	serv_req -> req_type = 3;	//slice
-	serv_req -> cgroup_id = cfs_b->parent_tg->css.id;
-	serv_req -> rsrc_amnt = slice; //ask gcm for whatever a typical slice is (5ms)
-	sockfd = cfs_b->ecc->ec_cli;
-	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
-	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
-	printk(KERN_INFO "[EC MESSAGE SLICE] received back %ld bytes from server\n", ret);
-	if(ret <= 0) {
-		printk(KERN_ERR "[EC ERROR SLICE] RX failed\n");
-		to_return = 0;
-		goto failed;
-	}
-
-	if(!serv_res) {
-		printk(KERN_ALERT "[EC ERROR SLICE] Received back NULL from server!\n");
-		to_return = 0;
-	}
-	printk(KERN_ALERT "[EC MESSAGE SLICE] REQUEST Type: %d\n", serv_res->req_type);
-	if(serv_res->req_type != 3) {
-		printk(KERN_ALERT "[EC ERROR SLICE] Received wrong req_type back from server....\n");
-	}
-
-	if(serv_res->rsrc_amnt > slice || serv_res->rsrc_amnt < 0) {
-		printk(KERN_ALERT "[EC ERROR SLICE] Received slice size outside expected range. rx slice: %lld\n", serv_res->rsrc_amnt);
-		//for testing. just let is slide for now
-		to_return = slice;
-	}
-	else {
-		to_return = serv_res->rsrc_amnt;
-	}
-
-failed:
-	kfree(serv_req);
-	kfree(serv_res);
-	return to_return;
-}
-
-
 int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 	if(!init_msg_req || !init_msg_res) {
 		printk(KERN_ERR "[EC ERROR] init_msg_req or init_msg_res in validate_init() == NULL\n");
@@ -347,7 +276,6 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-
 int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 
 	struct socket *sockfd_cli = NULL;
@@ -360,8 +288,6 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 	struct mem_cgroup *memcg;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	char buff_in[64];
-	//ec_message_t* init_msg_res;
 	int ret, recv;
 
 	// We first check whether the server is running and we can send a request to it prior to 
@@ -417,14 +343,11 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_req -> ec_id 		= 1;
 	init_msg_req -> client_ip 	= 2130706433;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt 	= 0;
 	init_msg_req -> request 	= 1;
-	init_msg_req -> slice_succeed = 0;
-	init_msg_req -> slice_fail	  = 0;
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
@@ -459,12 +382,9 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
 		return __BADARG;
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
-//	_ec_c -> request_function 				= &request_function;
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> request_cpu					= &request_cpu;
-	_ec_c -> acquire_cloud_global_slice 	= &acquire_cloud_global_slice;
 	_ec_c -> ec_cli 						= sockfd_cli;
-	_ec_c -> ec_id							= init_msg_res->ec_id;
 	cfs_b->ecc 								= _ec_c;
 
 	if(!cfs_b->ecc) {

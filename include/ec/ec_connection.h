@@ -15,27 +15,6 @@
 #include <linux/net.h>
 #include <linux/inet.h>
 #include <linux/memcontrol.h>
-//#include <stdint.h>
-
-typedef struct ec_msg {
-	uint32_t ec_id;
-	uint32_t client_ip;
-	uint32_t cgroup_id;
-	uint32_t req_type;
-	uint64_t rsrc_amnt;
-	uint32_t request;
-	uint32_t slice_succeed;
-	uint32_t slice_fail;
-
-} ec_message_t;
-
-//typedef struct ec_init_msg {
-//	uint32_t ec_id;
-//	uint32_t client_ip;
-//	uint32_t cgroup_id;
-//	uint32_t req_type;
-//
-//} ec_init_message_t;
 
 struct cfs_bandwidth;
 
@@ -45,39 +24,14 @@ struct ec_connection {
 
 	int (*read)(struct socket* sock, char* str, int max_size, unsigned long flags);
 
-//	unsigned long (*request_function)(struct cfs_bandwidth* cfs_b, struct mem_cgroup *memcg);
-
 	unsigned long (*request_memory)(struct mem_cgroup *memcg);
 
 	unsigned long (*request_cpu)(struct cfs_bandwidth *cfs_b);
 
-	uint64_t (*acquire_cloud_global_slice)(struct cfs_bandwidth* cfs_b, uint64_t slice);
-
 	struct socket* ec_cli;
 
-	int ec_id;
 };
 
-extern int (*ec_connect_)(char*, int, int, int);
-
-//struct ec_payload {
-////	uint16_t group_id;
-//	uint8_t resource;		//mem=0 or cpu=1
-////	uint8_t type;		//request=0 or give back=1
-//	uint32_t amount;		//max = 1.07 petabytes mem
-//	uint32_t local_pid;
-//	uint32_t global_pid;
-//	uint32_t parent_global_pid;
-//};
-
-//void ec_payload_hton(struct ec_payload *p);// {
-//	p->group_id = htons(p->group_id);
-//	p->amount = htonl(p->amount);
-//}
-
-//void ec_payload_ntoh(struct ec_payload *p);// {
-//	p->group_id = ntohs(p->group_id);
-//	p->amount = ntohl(p->amount);
-//}
+extern int (*ec_connect_)(char*, int, int);
 
 #endif /* EC_CONNECTION_H_ */

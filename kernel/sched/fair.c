@@ -4321,18 +4321,15 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 			cfs_b->runtime -= amount;
 			cfs_b->idle = 0;
 		}
-		//else cfs_b->runtime == 0
 		/* EC */
 		else if(cfs_b->is_ec && cfs_b->gcm_local_runtime > 0) { //if cfs_b->runtime <= 0 && is an EC && gcm_local_runtime > 0
 			printk(KERN_INFO "get slice\n");
 			amount = min(cfs_b->gcm_local_runtime, sched_cfs_bandwidth_slice());
 			cfs_b->gcm_local_runtime -= amount;
 			cfs_b->idle = 0;
-//			cfs_b->get_slice_succeed_count++;
 		}
 		else if(cfs_b->is_ec) {
 			printk(KERN_INFO "no slices left. throttle\n");
-//			cfs_b->get_slice_fail_count++;
 		}
 
 	}

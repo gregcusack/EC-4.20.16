@@ -37,6 +37,16 @@ DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("MAZIYAR NAZARI");
 
+typedef struct ec_msg {
+	uint32_t client_ip;
+	uint32_t cgroup_id;
+	uint32_t req_type;
+	uint64_t rsrc_amnt;
+	uint32_t request;
+	uint64_t runtime_remaining;
+
+} ec_message_t;
+
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
 int tcp_rcv(struct socket* sock, char* str, int max_size, unsigned long flags);
 unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg);
