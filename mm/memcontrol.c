@@ -2277,7 +2277,7 @@ retry:
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
 		unsigned long new_max;
 		int ret;
-		new_max = memcg -> ecc -> request_function(NULL, memcg);
+		new_max = memcg -> ecc -> request_memory(memcg);
 		if (new_max != 0) {
 			ret = mem_cgroup_resize_max(memcg, new_max, false);
 			if(ret < 0) {
