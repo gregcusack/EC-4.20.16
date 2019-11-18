@@ -276,7 +276,7 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-int ec_connect(char *GCM_ip, int GCM_port, int pid) {
+int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 
 	struct socket *sockfd_cli = NULL;
 	struct sockaddr_in saddr;
@@ -329,8 +329,8 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
-	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
-//	saddr.sin_addr.s_addr = in_aton(GCM_ip);
+//	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
 
@@ -349,7 +349,7 @@ int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 	init_msg_req -> rsrc_amnt 	= 0;
 	init_msg_req -> request 	= 1;
 
-	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
 
 	printk(KERN_ALERT "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
