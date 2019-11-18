@@ -276,7 +276,7 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-int ec_connect(char *GCM_ip, int GCM_port, int pid, int ec_id) {
+int ec_connect(char *GCM_ip, int GCM_port, int pid) {
 
 	struct socket *sockfd_cli = NULL;
 	struct sockaddr_in saddr;
