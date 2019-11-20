@@ -13,5 +13,4 @@ echo "container init pid: "$CONTAINER_PID""
 
 export KERNEL_HOME="../"
 ../ec_syscalls/sys_connect "$IP" "$CONTAINER_PID" "$PORT"
-
 export CONTAINER_ID
