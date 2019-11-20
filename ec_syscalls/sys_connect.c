@@ -45,15 +45,16 @@ unsigned int ip_to_int (const char * ip)
 }
 
 int main(int argc, char const *argv[]) {
-	if(argc < 3) {
+	if(argc < 4) {
 		perror("specific pid, parent flag\n");
 		exit(-1);
 	}
-	int ret;
+	int ret, port;
 	int pid = atoi(argv[2]);
+	port = strtol(argv[3], NULL, 10);
 	//int parent_flag = strtol(argv[2], NULL, 10);
 	unsigned int ip = ip_to_int(argv[1]);
-	ret = syscall(__NR_SYSCALL__, ip, 4444, pid);
+	ret = syscall(__NR_SYSCALL__, ip, port, pid);
 
 	printf("[dbg] Syscall returned %d . Bye\n", ret);
 
