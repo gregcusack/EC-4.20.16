@@ -50,12 +50,13 @@ int main(int argc, char const *argv[]) {
 		exit(-1);
 	}
 	int ret;
-	int pid = atoi(argv[2]);
-	//int parent_flag = strtol(argv[2], NULL, 10);
 	unsigned int ip = ip_to_int(argv[1]);
-	ret = syscall(__NR_SYSCALL__, ip, 4444, pid);
+	int port_num = atoi(argv[2]);
+	int pid = atoi(argv[3]);
+	//int parent_flag = strtol(argv[2], NULL, 10);
+	ret = syscall(__NR_SYSCALL__, ip, port_num, pid);
 
-	printf("[dbg] Syscall returned %d . Bye\n", ret);
+	printf("[dbg] Syscall with ip: %d, port: %d, pid: %d - returned %d . Bye\n", ip, port_num, pid, ret);
 
 	return 0;
 }
