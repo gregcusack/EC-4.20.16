@@ -24,7 +24,7 @@ do
 		echo "Running test for quota: "$i" with id: "$CONTAINER_ID" and pid: "$CONTAINER_PID""
 		CIDS+=($CONTAINER_ID)
 		# Here, we want to make this an "EC container"
-		EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" 4444 "$CONTAINER_PID")"
+		EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" "$CONTAINER_PID" 4444)"
 		echo "EC syscall result: "$EC_RESULT""
 		echo "ran container: "$i" for quota: "$j""
 	done

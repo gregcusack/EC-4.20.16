@@ -25,7 +25,7 @@ do
 		echo "Running test for quota: "$i" with id: "$CONTAINER_ID" and pid: "$CONTAINER_PID""
 		CIDS+=($CONTAINER_ID)
 		# Here, we want to make this a seperate "distributed container"
-		EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" "$j" "$CONTAINER_PID")"
+		EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" "$CONTAINER_PID" "$j")"
 		echo "EC syscall result: "$EC_RESULT""
 		echo "Started container with quota="$i" on port "$j"..."
 	done

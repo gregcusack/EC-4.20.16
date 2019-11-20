@@ -12,7 +12,7 @@ do
 	CONTAINER_ID="$(sudo docker run -d --cpu-period=100000 --cpu-quota="$i" --cpuset-cpus=0-9 "$CONTAINER_NAME")"
 	CONTAINER_PID="$(sudo docker inspect -f '{{.State.Pid}}' "$CONTAINER_ID")"
 	echo "Running test for period=100000 and quota="$i" with id: "$CONTAINER_ID" and pid: "$CONTAINER_PID""
-	EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" 4444 "$CONTAINER_PID")"
+	EC_RESULT="$(../ec_syscalls/sys_connect "$IP_ADDRESS" "$CONTAINER_PID" 4444)"
 	echo "EC syscall result: "$EC_RESULT""
 	while [ "`sudo docker inspect -f '{{.State.Running}}' "$CONTAINER_ID"`" != "false" ]
         do
