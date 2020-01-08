@@ -1,0 +1,47 @@
+apiVersion: apps/v1 #required fields
+kind: DaemonSet #required fields
+metadata: #required fields
+  name: agent-daemonset
+  namespace: kube-system
+  labels:
+    k8s-app: ec-agent
+spec:
+  selector:
+    matchLabels:
+      name: agent-daemon
+  template:
+    metadata:
+      labels:
+        name: agent-daemon
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: agent-daemon-example
+        image: docker.pkg.github.com/gregcusack/ec-4.20.16/ec-agent:1.0
+        ports:
+          - containerPort: 4445
+            hostPort: 4445
+            name: testPort
+            protocol: TCP
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+          - name: varlog
+            mountPath: /var/log
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+            readOnly: true 
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: varlog
+          hostPath:
+            path: /var/log
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
