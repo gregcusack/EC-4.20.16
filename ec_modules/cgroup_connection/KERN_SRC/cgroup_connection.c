@@ -140,7 +140,7 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 	serv_req -> cgroup_id 			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
 
-	serv_req -> request				= 1;
+	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 
 	sockfd 							= cfs_b->ecc->ec_cli;
@@ -346,8 +346,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 	init_msg_req -> client_ip 	= 2130706433;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
-	init_msg_req -> rsrc_amnt 	= 0;
-	init_msg_req -> request 	= 1;
+	init_msg_req -> rsrc_amnt 	= cfs_b->quota;			//init vals for sc
+	init_msg_req -> request 	= cfs_b->nr_throttled;  //init vals for sc
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
