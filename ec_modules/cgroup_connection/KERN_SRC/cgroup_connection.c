@@ -136,6 +136,11 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 		to_return = 0;
 		goto failed;
 	}
+
+	if(cfs_b->quota < cfs_b->runtime) {
+		printk(KERN_ALERT "[EC DBG]: quota < rt_remaining: (%lld, %lld)\n", cfs_b->quota, cfs_b->runtime);
+	}
+
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id 			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
@@ -385,7 +390,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> request_cpu					= &request_cpu;
 	_ec_c -> ec_cli 						= sockfd_cli;
-	cfs_b->ecc 								= _ec_c;
+	cfs_b -> ecc 							= _ec_c;
 
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
