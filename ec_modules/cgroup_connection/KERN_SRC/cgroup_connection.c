@@ -87,7 +87,8 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	read_again:
 		iter++;
 		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
-		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
+//		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
+		len = kernel_recvmsg(sock, &msg, &vec, length, length, flags);
 		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
@@ -137,9 +138,15 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 
-	if(cfs_b->quota < cfs_b->runtime) {
-		printk(KERN_ALERT "[EC DBG]: quota < rt_remaining: (%lld, %lld)\n", cfs_b->quota, cfs_b->runtime);
+//	if(cfs_b->quota < cfs_b->runtime) {
+//		printk(KERN_ALERT "[EC DBG]: quota < rt_remaining: (%lld, %lld)\n", cfs_b->quota, cfs_b->runtime);
+//	}
+
+	if(cfs_b->quota <= 0) {
+		printk(KERN_ALERT "[EC_ZERO]: quota is 0\n");
 	}
+	printk(KERN_ALERT "[EC_SUH]: quota in: %lld\n", cfs_b->quota);
+	printk(KERN_ALERT "[EC_SUH]: rt_remain: %lld\b", cfs_b->runtime);
 
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id 			= cfs_b->parent_tg->css.id;
@@ -149,8 +156,34 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 
 	sockfd 							= cfs_b->ecc->ec_cli;
+
 	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
-	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+	if(cfs_b->first_req == 2) {
+//		serv_req->rsrc_amnt--;
+		printk(KERN_ALERT "first_req = 2\n");
+//		ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+		ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+		to_return = 50000000;
+//		ret = tcp_rcv(sockfd, (char*)serv_res, 2*sizeof(ec_message_t), MSG_DONTWAIT);
+		cfs_b->first_req--;
+		goto failed;
+	}
+	else if(cfs_b->first_req == 1) {
+		printk(KERN_ALERT "first_req = 1\n");
+//		ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+//		ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), MSG_DONTWAIT);
+		to_return = 50000000;
+		cfs_b->first_req--;
+		goto failed;
+	}
+	else {
+		printk(KERN_ALERT "first_Req = 0\n");
+		to_return = 50000000;
+		goto failed;
+//		ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
+	}
+
+//	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
 	if(ret <= 0) {
@@ -173,30 +206,34 @@ unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
 	if(serv_res->rsrc_amnt > 0) {
 		printk(KERN_INFO "rx amnt: %lld\n", serv_res->rsrc_amnt);
 		//case where gcm return extra bw to be consume by local procs
-		if(serv_res->rsrc_amnt > cfs_b->quota) {
-			cfs_b->gcm_local_runtime = serv_res->rsrc_amnt - cfs_b->quota;
-			serv_res->rsrc_amnt -= cfs_b->gcm_local_runtime;
-		}
-		else {
-			cfs_b->gcm_local_runtime = 0;
-		}
+		//cfs_b->quota = serv_res->rsrc_amnt;
+		cfs_b->gcm_local_runtime = 0;
+//		if(serv_res->rsrc_amnt > cfs_b->quota) {
+//			cfs_b->gcm_local_runtime = serv_res->rsrc_amnt - cfs_b->quota;
+//			serv_res->rsrc_amnt -= cfs_b->gcm_local_runtime;
+//		}
+//		else {
+//			cfs_b->gcm_local_runtime = 0;
+//		}
 		to_return = serv_res->rsrc_amnt;
 
 	}
 	else if(serv_res->rsrc_amnt == 0) {
 		printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server == 0. Throttle!\n");
 		//TODO: Throttle or something
-		to_return = 0; //test. hopefully works?
+		to_return = 22222222; //test. hopefully works?
 	}
 	else {
 		printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server < 0. bummer!\n");
 		//TODO: Throttle or something
-		to_return = 0; //avoid crashing for now, but should throttle?
+		to_return = 11111111; //avoid crashing for now, but should throttle?
 	}
 
 failed:
 	kfree(serv_req);
 	kfree(serv_res);
+	cfs_b->quota = to_return;
+	printk(KERN_ALERT "[EC_SUH]: quota out: %lld\n", cfs_b->quota);
 	return to_return;
 }
 
@@ -294,6 +331,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 
 	ec_message_t *init_msg_req, *init_msg_res;
 	int ret, recv;
+	_Bool opt_flag;
 
 	// We first check whether the server is running and we can send a request to it prior to 
 	// indicating the container as "elastic"
@@ -324,7 +362,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 
 	ret = -1;
 //	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
-	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	ret = sock_create_kern(&init_net, AF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	if(ret < 0){
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
 		return ret;
@@ -343,7 +381,14 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
 		return ret;
 	}
-	
+
+//	opt_flag = true;
+//	ret = sockfd_cli -> ops -> setsockopt(sockfd_cli, IPPROTO_TCP, TCP_NODELAY, (char *)&opt_flag, sizeof(_Bool)); //try TCP_IPPROTO instead of SOL_TCP
+//	if(ret && (ret != -EINPROGRESS)){
+//		printk(KERN_ALERT"[ERROR] setsockopt() failed: %d.\n", ret);
+//		return ret;
+//	}
+
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
@@ -382,6 +427,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;
+	cfs_b->first_req = 2;			//TEST
 
 	if(!memcg)
 		return __BADARG;
