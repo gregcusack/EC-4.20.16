@@ -6374,6 +6374,7 @@ void sched_move_task(struct task_struct *tsk)
 	task_rq_unlock(rq, tsk, &rf);
 }
 
+//ec. was "static" changed to "extern"
 static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 {
 	return css ? container_of(css, struct task_group, css) : NULL;
@@ -6585,7 +6586,7 @@ out_unlock:
 	return ret;
 }
 
-int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
+extern int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
 {
 	u64 quota, period;
 
@@ -6597,6 +6598,7 @@ int tg_set_cfs_quota(struct task_group *tg, long cfs_quota_us)
 
 	return tg_set_cfs_bandwidth(tg, period, quota);
 }
+EXPORT_SYMBOL(tg_set_cfs_quota);
 
 long tg_get_cfs_quota(struct task_group *tg)
 {
@@ -7008,6 +7010,7 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 	.early_init	= true,
 	.threaded	= true,
 };
+EXPORT_SYMBOL(cpu_cgrp_subsys);
 
 #endif	/* CONFIG_CGROUP_SCHED */
 

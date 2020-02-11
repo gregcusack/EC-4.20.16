@@ -28,6 +28,8 @@ struct ec_connection {
 
 	unsigned long (*request_cpu)(struct cfs_bandwidth *cfs_b);
 
+	int (*report_cpu_usage)(struct cfs_bandwidth *cfs_b);
+
 	struct socket* ec_cli;
 
 };

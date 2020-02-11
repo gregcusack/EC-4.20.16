@@ -360,6 +360,7 @@ struct cfs_bandwidth {
 	struct task_group 	*parent_tg;
 	u64 gcm_local_runtime;
 	short first_req;
+	int *id;
 
 #endif
 };
