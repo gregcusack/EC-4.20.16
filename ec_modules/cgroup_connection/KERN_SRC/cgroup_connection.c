@@ -134,6 +134,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 //	serv_req -> request = 1;
 	serv_req -> req_type 			= 0;
+	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
 	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
