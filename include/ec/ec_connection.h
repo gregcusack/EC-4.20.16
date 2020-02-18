@@ -32,6 +32,6 @@ struct ec_connection {
 
 };
 
-extern int (*ec_connect_)(unsigned int, int, int);
+extern int (*ec_connect_)(unsigned int, int, int, unsigned int);
 
 #endif /* EC_CONNECTION_H_ */
