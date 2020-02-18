@@ -140,6 +140,8 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	sockfd 							= cfs_b->ecc->ec_cli;
 
+	printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
+
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
 	if(ret) {
@@ -309,7 +311,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_req -> client_ip 	= 2130706433;
 	init_msg_req -> req_type 	= 2;
-	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
+	init_msg_req -> cgroup_id 	= tg->css.id;//mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt 	= cfs_b->quota;			//init vals for sc
 	init_msg_req -> request 	= cfs_b->nr_throttled;  //init vals for sc
 

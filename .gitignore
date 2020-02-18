@@ -132,3 +132,6 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+#distributed containers (dc/ec)
+ec_docker/*.txt
