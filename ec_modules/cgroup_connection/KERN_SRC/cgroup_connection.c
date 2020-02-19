@@ -276,7 +276,7 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
+int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip) {
 
 	struct socket *sockfd_cli = NULL;
 	struct sockaddr_in saddr;
@@ -343,7 +343,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_req -> client_ip 	= 2130706433;
+	init_msg_req -> client_ip 	= agent_ip;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt 	= 0;

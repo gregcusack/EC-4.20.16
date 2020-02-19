@@ -2,6 +2,14 @@
 #include <sys/syscall.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> /* for strncpy */
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+
 #define __NR_SYSCALL__ 335
 
 unsigned int ip_to_int (const char * ip)
@@ -45,19 +53,34 @@ unsigned int ip_to_int (const char * ip)
 }
 
 int main(int argc, char const *argv[]) {
-	if(argc < 4) {
-		perror("specific pid, parent flag\n");
+	if(argc < 5) {
+		perror("usage: ./sysconnect <IP> <PID> <PORT> <INTERFACE>\n");
 		exit(-1);
 	}
 
 	int ret, port;
-	int pid = atoi(argv[2]);
-	port = strtol(argv[3], NULL, 10);
-
 	unsigned int ip = ip_to_int(argv[1]);
-	ret = syscall(__NR_SYSCALL__, ip, port, pid);
+    int pid = atoi(argv[2]);
+	port = strtol(argv[3], NULL, 10);
+    const char* interface = argv[4];
+    unsigned int agent_ip;
 
-	printf("[dbg] Syscall with ip: %u, port: %d, pid: %d - returned %d . Bye\n", ip, port, pid, ret);
+    int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    struct ifreq ifr;
+
+    /* Get the IPv4 IP address */
+    ifr.ifr_addr.sa_family = AF_INET;
+    /* get IP address attached to interface passed in */
+    strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
+    ioctl(fd, SIOCGIFADDR, &ifr);
+    close(fd);
+    /* For debugging purposes: */
+    // printf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    agent_ip = ip_to_int(inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    printf("Agent IP unsigned int: %u\n", agent_ip);
+
+	ret = syscall(__NR_SYSCALL__, ip, port, pid, agent_ip);
+	printf("[dbg] Syscall with ip: %u, port: %d, pid: %d, agent ip: %u - returned %d . Bye\n", ip, port, pid, agent_ip ,ret);
 
 	return 0;
 }
