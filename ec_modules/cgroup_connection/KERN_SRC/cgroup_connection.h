@@ -29,8 +29,12 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
+#include <linux/spinlock_types.h>
+#include <linux/spinlock.h>
 
 #define __BADARG -1
+
+spinlock_t sock_lock;
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 

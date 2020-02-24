@@ -4,9 +4,10 @@ CONTAINER_NAME=$1
 IP=$2
 PORT=$3
 QUOTA=$(($4 * 1000))
+VOL=$5
 echo $QUOTA
 
-CONTAINER_ID="$(sudo docker run -d --cpu-period=100000 --cpu-quota=$QUOTA --cpuset-cpus 0 "$CONTAINER_NAME")"
+CONTAINER_ID="$(sudo docker run -d --cpu-period=100000 --cpu-quota=$QUOTA --cpuset-cpus 0 --mount source=$VOL,target=/app "$CONTAINER_NAME")"
 
 CONTAINER_PID="$(sudo docker inspect -f '{{.State.Pid}}' "$CONTAINER_ID")"
 echo "container id: "$CONTAINER_ID""

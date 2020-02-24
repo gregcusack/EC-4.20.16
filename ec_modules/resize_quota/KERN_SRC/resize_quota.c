@@ -24,21 +24,12 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 //
 //
 	printk(KERN_INFO "Resizing quota to: %lld\n", _quota);
+	cfs_b = &tg->cfs_bandwidth;
+	cfs_b->resize_quota = 1;
 	ret = tg_set_cfs_quota(tg, _quota);
-
 	if(ret) {
 		printk(KERN_INFO "ret != 0. Error\n");
 	}
-//
-//	cfs_b = &tg->cfs_bandwidth;
-
-
-
-
-//	cfs_b->quota = _quota;
-
-
-
 
 
 	return ret;

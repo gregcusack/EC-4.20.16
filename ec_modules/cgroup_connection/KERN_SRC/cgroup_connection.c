@@ -64,6 +64,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		}
 	set_fs(oldmm);
+	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
 
 	return written == length ? 0 : len;
 }
@@ -142,7 +143,9 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+//	spin_lock(&sock_lock);
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), 0);
+//	spin_unlock(&sock_lock);
 
 	if(ret) {
 		printk(KERN_INFO "TX failed\n");
@@ -228,6 +231,9 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 			|| init_msg_req->rsrc_amnt != init_msg_res->rsrc_amnt
 			|| (!init_msg_req->request) != init_msg_res->request) {
 		printk(KERN_ERR "[EC ERROR] Init error, received wrong info back from server on init\n");
+		printk(KERN_ALERT "[MSG tx]: %d, %d, %lld, %d\n", init_msg_req->cgroup_id, init_msg_req->req_type, init_msg_req->rsrc_amnt, init_msg_req->request);
+		printk(KERN_ALERT "[MSG rx]: %d, %d, %lld, %d\n", init_msg_res->cgroup_id, init_msg_res->req_type, init_msg_res->rsrc_amnt, init_msg_res->request);
+
 		return __BADARG;
 	}
 	return 0;
@@ -313,7 +319,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;//mem_cgroup_id(memcg);
 	init_msg_req -> rsrc_amnt 	= cfs_b->quota;			//init vals for sc
-	init_msg_req -> request 	= cfs_b->nr_throttled;  //init vals for sc
+	init_msg_req -> request 	= 1;//cfs_b->nr_throttled;  //init vals for sc
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
@@ -343,7 +349,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid) {
 
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;
-	cfs_b->first_req = 2;			//TEST
+	cfs_b->resize_quota = 0;			//TEST
 	//cfs_b->css_id = cfs_b->parent_tg->css.id;
 
 	if(!memcg)
