@@ -1,5 +1,5 @@
 
-#define DRIVER_NAME "shrink_mem"
+#define DRIVER_NAME "resize_max_mem"
 #define PDEBUG(fmt,args...) printk(KERN_DEBUG"%s:"fmt,DRIVER_NAME, ##args)
 #define PERR(fmt,args...) printk(KERN_ERR"%s:"fmt,DRIVER_NAME,##args)
 #define PINFO(fmt,args...) printk(KERN_INFO"%s:"fmt,DRIVER_NAME, ##args)
@@ -16,7 +16,7 @@
 #include<linux/slab.h>
 #include<asm/uaccess.h>
 #include<linux/in.h>
-#include<ec/shrink_memory.h>
+#include<ec/resize_max_memory.h>
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
@@ -27,5 +27,5 @@
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("MAZIYAR NAZARI");
 
-long shrink_mem(unsigned short id, int is_memsw);
+long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw);
 

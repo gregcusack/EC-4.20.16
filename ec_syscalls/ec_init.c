@@ -5,8 +5,8 @@
 int (*ec_connect_)(unsigned int, int, int, unsigned int);
 EXPORT_SYMBOL(ec_connect_);
 
-long (*shrink_mem_)(unsigned short, int);
-EXPORT_SYMBOL(shrink_mem_);
+long (*resize_max_mem_)(unsigned short, unsigned long, int);
+EXPORT_SYMBOL(resize_max_mem_);
 
 void __init ec_init(void) {
 	printk(KERN_INFO"EC initialized!\n");
