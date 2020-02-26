@@ -1,1 +1,0 @@
-/usr/bin/c++  -pthread -g   CMakeFiles/Agent.dir/Handler.cpp.o CMakeFiles/Agent.dir/Server.cpp.o CMakeFiles/Agent.dir/main.cpp.o  -o Agent 
