@@ -141,7 +141,3 @@ ec_benchmarks/192.168.6.10
 ec_benchmarks/ec_subcontainers
 ec_benchmarks/ec_multiple
 
-#
-# Ignore changes to ec_gcm and EC-Agent
-#
-ec_gcm/*
