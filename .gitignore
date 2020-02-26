@@ -142,7 +142,6 @@ ec_benchmarks/ec_subcontainers
 ec_benchmarks/ec_multiple
 
 #
-# Ignore changed to ec_gcm and EC-Agent
+# Ignore changes to ec_gcm and EC-Agent
 #
 ec_gcm/*
-EC-Agent/*
