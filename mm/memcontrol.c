@@ -1201,7 +1201,7 @@ bool task_in_mem_cgroup(struct task_struct *task, struct mem_cgroup *memcg)
  * Returns the maximum amount of memory @mem can be charged with, in
  * pages.
  */
-static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
+unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 {
 	unsigned long margin = 0;
 	unsigned long count;
@@ -1223,7 +1223,7 @@ static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 
 	return margin;
 }
-
+EXPORT_SYMBOL(mem_cgroup_margin);
 /*
  * A routine for checking "mem" is under move_account() or not.
  *
