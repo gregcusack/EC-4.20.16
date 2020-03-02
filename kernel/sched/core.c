@@ -6611,7 +6611,7 @@ long tg_get_cfs_quota(struct task_group *tg)
 	return quota_us;
 }
 
-int tg_set_cfs_period(struct task_group *tg, long cfs_period_us)
+extern int tg_set_cfs_period(struct task_group *tg, long cfs_period_us)
 {
 	u64 quota, period;
 
@@ -6620,6 +6620,7 @@ int tg_set_cfs_period(struct task_group *tg, long cfs_period_us)
 
 	return tg_set_cfs_bandwidth(tg, period, quota);
 }
+EXPORT_SYMBOL(tg_set_cfs_quota);
 
 long tg_get_cfs_period(struct task_group *tg)
 {
@@ -7008,6 +7009,7 @@ struct cgroup_subsys cpu_cgrp_subsys = {
 	.early_init	= true,
 	.threaded	= true,
 };
+EXPORT_SYMBOL(cpu_cgrp_subsys);
 
 #endif	/* CONFIG_CGROUP_SCHED */
 

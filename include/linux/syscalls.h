@@ -912,6 +912,8 @@ asmlinkage long sys_ec_connect_(unsigned int GCM_ip, int GCM_port, int pid);
 
 asmlinkage long sys_shrink_mem_(unsigned long id, int memsw);
 
+asmlinkage long sys_resize_quota_(uint32_t id, uint64_t _quota);
+
 /*
  * Architecture-specific system calls
  */

@@ -64,6 +64,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		}
 	set_fs(oldmm);
+	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
 
 	return written == length ? 0 : len;
 }
@@ -118,81 +119,40 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 	return ret;
 }
 
-
-unsigned long request_cpu(struct cfs_bandwidth *cfs_b){
+int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
-	ec_message_t* serv_res;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
-	uint64_t to_return;
-//	uint32_t throttle_avg;
 
-	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_req -> request = 1;
 	if (!cfs_b) {
 		printk(KERN_ERR "[EC ERROR] request_cpu(): cfs_b == NULL...idk what to do\n");
-		ret = 0;
-		to_return = 0;
+		ret = -1;
 		goto failed;
 	}
+
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+
+//	serv_req -> request = 1;
 	serv_req -> req_type 			= 0;
-	serv_req -> cgroup_id 			= cfs_b->parent_tg->css.id;
+	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
-
-	serv_req -> request				= 1;
+	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
-
 	sockfd 							= cfs_b->ecc->ec_cli;
-	// Here, we want to listen to a response and assign it to the cfs_b -> runtime in the kernel...
-	ret = read_write(sockfd, serv_req, serv_res, MSG_DONTWAIT);
 
-	printk(KERN_INFO "received back %ld bytes from server\n", ret);
-	if(ret <= 0) {
-		printk(KERN_INFO "RX failed\n");
-		to_return = 0;
-		goto failed;
-	}
-	if(!serv_res) {
-		printk(KERN_ALERT "[EC ERROR] Received back NULL from server!\n");
-		to_return = 0;
-		goto failed;
-	}
+	printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	if(serv_res->req_type != 0) {
-		printk(KERN_ALERT "[EC ERROR] req_type rx in request_cpu() not correct. should be 0 but got back: %d!\n", serv_res->req_type);
-		to_return = 0;
-		goto failed;
-	}
+//	spin_lock(&sock_lock);
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), 0);
+//	spin_unlock(&sock_lock);
 
-	if(serv_res->rsrc_amnt > 0) {
-		printk(KERN_INFO "rx amnt: %lld\n", serv_res->rsrc_amnt);
-		//case where gcm return extra bw to be consume by local procs
-		if(serv_res->rsrc_amnt > cfs_b->quota) {
-			cfs_b->gcm_local_runtime = serv_res->rsrc_amnt - cfs_b->quota;
-			serv_res->rsrc_amnt -= cfs_b->gcm_local_runtime;
-		}
-		else {
-			cfs_b->gcm_local_runtime = 0;
-		}
-		to_return = serv_res->rsrc_amnt;
-
+	if(ret) {
+		printk(KERN_INFO "TX failed\n");
 	}
-	else if(serv_res->rsrc_amnt == 0) {
-		printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server == 0. Throttle!\n");
-		//TODO: Throttle or something
-		to_return = 0; //test. hopefully works?
-	}
-	else {
-		printk(KERN_ALERT "[EC_ERROR] rsrc_amnt rx from server < 0. bummer!\n");
-		//TODO: Throttle or something
-		to_return = 0; //avoid crashing for now, but should throttle?
-	}
+	kfree(serv_req);
 
 failed:
-	kfree(serv_req);
-	kfree(serv_res);
-	return to_return;
+	return ret;
 }
 
 unsigned long request_memory(struct mem_cgroup *memcg){
@@ -270,6 +230,9 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 			|| init_msg_req->rsrc_amnt != init_msg_res->rsrc_amnt
 			|| (!init_msg_req->request) != init_msg_res->request) {
 		printk(KERN_ERR "[EC ERROR] Init error, received wrong info back from server on init\n");
+		printk(KERN_ALERT "[MSG tx]: %d, %d, %lld, %d\n", init_msg_req->cgroup_id, init_msg_req->req_type, init_msg_req->rsrc_amnt, init_msg_req->request);
+		printk(KERN_ALERT "[MSG rx]: %d, %d, %lld, %d\n", init_msg_res->cgroup_id, init_msg_res->req_type, init_msg_res->rsrc_amnt, init_msg_res->request);
+
 		return __BADARG;
 	}
 	return 0;
@@ -339,15 +302,22 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		return ret;
 	}
 	
+//	opt_flag = true;
+//	ret = sockfd_cli -> ops -> setsockopt(sockfd_cli, IPPROTO_TCP, TCP_NODELAY, (char *)&opt_flag, sizeof(_Bool)); //try TCP_IPPROTO instead of SOL_TCP
+//	if(ret && (ret != -EINPROGRESS)){
+//		printk(KERN_ALERT"[ERROR] setsockopt() failed: %d.\n", ret);
+//		return ret;
+//	}
+
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
 	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	init_msg_req -> client_ip 	= agent_ip;
 	init_msg_req -> req_type 	= 2;
-	init_msg_req -> cgroup_id 	= mem_cgroup_id(memcg);
-	init_msg_req -> rsrc_amnt 	= 0;
-	init_msg_req -> request 	= 1;
+	init_msg_req -> cgroup_id 	= tg->css.id;
+	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //init vals for sc
+	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
@@ -377,6 +347,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;
+	cfs_b->resize_quota = 0;			//TEST
 
 	if(!memcg)
 		return __BADARG;
@@ -385,7 +356,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> request_cpu					= &request_cpu;
 	_ec_c -> ec_cli 						= sockfd_cli;
-	cfs_b->ecc 								= _ec_c;
+	cfs_b - >ecc 							= _ec_c;
 
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
