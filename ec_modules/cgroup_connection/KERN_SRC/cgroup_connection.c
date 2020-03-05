@@ -125,7 +125,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	struct socket* sockfd = NULL;
 
 	if (!cfs_b) {
-		printk(KERN_ERR "[EC ERROR] request_cpu(): cfs_b == NULL...idk what to do\n");
+		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
 		ret = -1;
 		goto failed;
 	}
@@ -318,6 +318,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> cgroup_id 	= tg->css.id;
 	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //init vals for sc
 	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
+	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
@@ -354,9 +355,9 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
-	_ec_c -> request_cpu					= &request_cpu;
+	_ec_c -> report_cpu_usage				= &report_cpu_usage;
 	_ec_c -> ec_cli 						= sockfd_cli;
-	cfs_b - >ecc 							= _ec_c;
+	cfs_b -> ecc 							= _ec_c;
 
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");

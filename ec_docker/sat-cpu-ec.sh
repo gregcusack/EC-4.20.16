@@ -4,6 +4,7 @@ CONTAINER_NAME=$1
 IP=$2
 PORT=$3
 QUOTA=$(($4 * 1000))
+AGENT_IP=$5
 echo $QUOTA
 
 CONTAINER_ID="$(sudo docker run -d --cpu-period=100000 --cpu-quota=$QUOTA --cpuset-cpus 0 "$CONTAINER_NAME")"
@@ -12,5 +13,5 @@ echo "container id: "$CONTAINER_ID""
 echo "container init pid: "$CONTAINER_PID""
 
 export KERNEL_HOME="../"
-../ec_syscalls/sys_connect "$IP" "$CONTAINER_PID" "$PORT"
+../ec_syscalls/sys_connect "$IP" "$CONTAINER_PID" "$PORT" "$AGENT_IP"
 export CONTAINER_ID
