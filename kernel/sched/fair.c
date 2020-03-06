@@ -4266,9 +4266,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 
 	now = sched_clock_cpu(smp_processor_id());
 	// This logic is only for an "elastic" container..
-	printk(KERN_INFO "cfs_b->is_ec: %d\n", cfs_b->is_ec);
 	if(cfs_b->is_ec) {
-		printk(KERN_INFO "cfs_b is_ec. resize_quota: %d\n", cfs_b->resize_quota);
 		if(!cfs_b->resize_quota) { //when we set quota, we don't want to report to GCM
 			ret = cfs_b->ecc->report_cpu_usage(cfs_b);
 			if (ret) {
