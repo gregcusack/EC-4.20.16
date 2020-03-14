@@ -97,6 +97,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 			}
 			goto read_again;
 		}
+	printk(KERN_ALERT "[DC DBG]: (%d, %d)\n",length, len);
 	return len;//len == length ? 0:len;
 }
 
@@ -114,7 +115,7 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 		printk(KERN_ALERT "[EC ERROR] Request Function: serv_req or serv_res == NULL\n");
 		return 0;
 	}
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), flags);
 	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), flags);
 	return ret;
 }
@@ -123,6 +124,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
+	return 0;
 
 	if (!cfs_b) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
@@ -162,6 +164,8 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
 
+	printk(KERN_INFO "in request_memory()\n");
+
 	if(!memcg) {
 		printk(KERN_ERR "[EC ERROR] request_memory(): memcg == NULL...idk what to do\n");
 		ret = 0;
@@ -180,6 +184,10 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 	serv_req -> runtime_remaining 	= 0;
 	sockfd 							= memcg->ecc->ec_cli;
 	serv_req -> request 			= 1;
+
+//	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), 0);
+//	ret = tcp_rcv(sockfd, (char*)serv_res, sizeof(ec_message_t), 0);
+
 	ret = read_write(sockfd, serv_req, serv_res, 0);
 
 	printk(KERN_INFO "received back %ld bytes from server\n", ret);
@@ -368,7 +376,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	memcg -> ecc = _ec_c;
 	memcg -> ec_flag = 1;
 	memcg -> ec_max = 0;
-	printk(KERN_INFO"[Success] mem_cgroup connection initialized!\n");
+	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
 		
 	return 0;
 

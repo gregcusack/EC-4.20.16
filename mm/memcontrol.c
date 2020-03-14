@@ -1201,7 +1201,7 @@ bool task_in_mem_cgroup(struct task_struct *task, struct mem_cgroup *memcg)
  * Returns the maximum amount of memory @mem can be charged with, in
  * pages.
  */
-static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
+unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 {
 	unsigned long margin = 0;
 	unsigned long count;
@@ -1223,7 +1223,7 @@ static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 
 	return margin;
 }
-
+EXPORT_SYMBOL(mem_cgroup_margin);
 /*
  * A routine for checking "mem" is under move_account() or not.
  *
@@ -2278,14 +2278,21 @@ retry:
 		unsigned long new_max;
 		int ret;
 		new_max = memcg -> ecc -> request_memory(memcg);
+		printk(KERN_INFO "[dbg] new_max: %ld\n", new_max);
 		if (new_max != 0) {
 			ret = mem_cgroup_resize_max(memcg, new_max, false);
+			printk(KERN_INFO "[dbg] ret val from mem_cgroup_resize_max(): %d\n", ret);
 			if(ret < 0) {
 				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
 				///uhhhh no clue what to do here
 			}
+			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
 			goto retry;
 		}
+	}
+	else if(memcg->ec_flag == 1) {
+		printk(KERN_INFO "[dbg] memcg->memory.max: %ld\n", memcg->memory.max);
+		printk(KERN_INFO "[dbg] new: %ld\n", new);
 	}
 
 

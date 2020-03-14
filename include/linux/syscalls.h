@@ -908,11 +908,8 @@ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
 asmlinkage long sys_rseq(struct rseq __user *rseq, uint32_t rseq_len,
 			 int flags, uint32_t sig);
 
-asmlinkage long sys_ec_connect_(unsigned int GCM_ip, int GCM_port, int pid);
 
-asmlinkage long sys_shrink_mem_(unsigned long id, int memsw);
-
-asmlinkage long sys_resize_quota_(uint32_t id, uint64_t _quota);
+//asmlinkage long sys_resize_quota_(uint32_t id, uint64_t _quota);
 
 /*
  * Architecture-specific system calls

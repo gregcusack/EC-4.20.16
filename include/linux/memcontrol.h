@@ -438,6 +438,8 @@ extern struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
 
 extern unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap);
 
+extern unsigned long mem_cgroup_margin(struct mem_cgroup *memcg);
+
 static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 {
 	struct mem_cgroup_per_node *mz;

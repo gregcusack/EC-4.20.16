@@ -1,5 +1,5 @@
 CONFIG_MODULE_SIG=n
-obj-m		:= shrink_mem.o 
+obj-m		:= resize_max_mem.o 
 KERN_SRC	:= /lib/modules/$(shell uname -r)/build/
 PWD			:= $(shell pwd)
 
