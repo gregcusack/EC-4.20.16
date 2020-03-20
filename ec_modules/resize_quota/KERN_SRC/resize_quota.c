@@ -30,12 +30,15 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 	cfs_b->resize_quota = 1;
 	ret = tg_set_cfs_quota(tg, _quota);
 	if(ret) {
-		printk(KERN_INFO "ret != 0. Error\n");
+		printk(KERN_INFO "ret != 0. Error\n. ret: %d\n", ret);
+		return 1;
 	}
 	printk(KERN_INFO "Resized quota to: %lld\n", cfs_b->quota);
+	return cfs_b->quota;
+//	return 0;
 
 
-	return ret;
+//	return ret;
 
 }
 

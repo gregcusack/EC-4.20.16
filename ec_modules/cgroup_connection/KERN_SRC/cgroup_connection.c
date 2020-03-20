@@ -124,7 +124,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
-	return 0;
+//	return 0;
 
 	if (!cfs_b) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");

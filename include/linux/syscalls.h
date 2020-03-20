@@ -910,6 +910,7 @@ asmlinkage long sys_rseq(struct rseq __user *rseq, uint32_t rseq_len,
 
 
 //asmlinkage long sys_resize_quota_(uint32_t id, uint64_t _quota);
+asmlinkage long sys_read_quota_(uint32_t id);
 
 /*
  * Architecture-specific system calls

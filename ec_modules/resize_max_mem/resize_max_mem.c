@@ -36,7 +36,7 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	else {
 		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit you spacified\n");
 	}
-	return 1;
+	return 0;
 //	return 0;
 	
 }
