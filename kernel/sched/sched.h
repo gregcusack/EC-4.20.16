@@ -359,6 +359,7 @@ struct cfs_bandwidth {
 	int 					is_ec; //0=not an EC, 1=is an EC
 	struct task_group 	*parent_tg;
 	u64 gcm_local_runtime;
+	short resize_quota;
 
 #endif
 };

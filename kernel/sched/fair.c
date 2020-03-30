@@ -4258,7 +4258,7 @@ static inline u64 sched_cfs_bandwidth_slice(void)
 void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
-	unsigned long ret;
+	int ret;
 	//unsigned long ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
@@ -4266,21 +4266,19 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 
 	now = sched_clock_cpu(smp_processor_id());
 	// This logic is only for an "elastic" container..
-//	cfs_b->runtime = cfs_b->quota;
 	if(cfs_b->is_ec) {
-//		ret = cfs_b->ecc->request_function(cfs_b, NULL);
-		ret = cfs_b->ecc->request_cpu(cfs_b);
-		if (!ret) {
-			//if ret = 0, means throttle
-			printk(KERN_ALERT "[ECC fcDBG] __refill_cfs: EC cpu request function returned error %ld..\n", ret);
+		if(!cfs_b->resize_quota) { //when we set quota, we don't want to report to GCM
+			ret = cfs_b->ecc->report_cpu_usage(cfs_b);
+			if (ret) {
+				printk(KERN_ALERT "[DC DBG] __refill_cfs: DC report_cpu_usage() function returned error %d..\n", ret);
+			}
 		}
-//		printk("ret: %ld\n", ret);
-
-		cfs_b->runtime = ret;
+		else {
+			printk(KERN_INFO "reset resize_quota to 1\n");
+			cfs_b->resize_quota = 0;
+		}
 	}
-	else {
-		cfs_b->runtime = cfs_b->quota;
-	}
+	cfs_b->runtime = cfs_b->quota;
 	cfs_b->runtime_expires = now + ktime_to_ns(cfs_b->period);
 	cfs_b->expires_seq++;
 }
@@ -4321,16 +4319,16 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 			cfs_b->runtime -= amount;
 			cfs_b->idle = 0;
 		}
-		/* EC */
-		else if(cfs_b->is_ec && cfs_b->gcm_local_runtime > 0) { //if cfs_b->runtime <= 0 && is an EC && gcm_local_runtime > 0
-			printk(KERN_INFO "get slice\n");
-			amount = min(cfs_b->gcm_local_runtime, sched_cfs_bandwidth_slice());
-			cfs_b->gcm_local_runtime -= amount;
-			cfs_b->idle = 0;
-		}
-		else if(cfs_b->is_ec) {
-			printk(KERN_INFO "no slices left. throttle\n");
-		}
+//		/* EC */
+//		else if(cfs_b->is_ec && cfs_b->gcm_local_runtime > 0) { //if cfs_b->runtime <= 0 && is an EC && gcm_local_runtime > 0
+//			printk(KERN_INFO "get slice\n");
+//			amount = min(cfs_b->gcm_local_runtime, sched_cfs_bandwidth_slice());
+//			cfs_b->gcm_local_runtime -= amount;
+//			cfs_b->idle = 0;
+//		}
+//		else if(cfs_b->is_ec) {
+//			printk(KERN_INFO "no slices left. throttle\n");
+//		}
 
 	}
 	expires_seq = cfs_b->expires_seq;

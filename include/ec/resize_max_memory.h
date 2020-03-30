@@ -12,6 +12,6 @@
 #include <linux/sched.h>
 #include <linux/memcontrol.h>
 
-extern long (*shrink_mem_)(unsigned short, int);
+extern long (*resize_max_mem_)(unsigned short, unsigned long, int);
 
 #endif
