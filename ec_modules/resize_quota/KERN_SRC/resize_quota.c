@@ -16,14 +16,31 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 	struct cfs_bandwidth *cfs_b;
 	int ret = 0;
 
+	if(!ss) {
+		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] ss == NULL.\n");
+		return 1;
+	}
+
 	rcu_read_lock();
 	css_ptr = css_from_id(id, ss);
 	rcu_read_unlock();
+	if(!css_ptr) {
+		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] css_ptr == NULL.\n");
+		return 1;
+	}
+
 	tg = container_of(css_ptr, struct task_group, css);
 //	tg = css_tg(css);
-//
-//
+	if(!tg) {
+		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] tg == NULL.\n");
+		return 1;
+	}
+
 	cfs_b = &tg->cfs_bandwidth;
+	if(!cfs_b) {
+		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] cfs_b == NULL.\n");
+		return 1;
+	}
 	printk(KERN_INFO "quota preupdate: %lld\n", cfs_b->quota);
 	printk(KERN_INFO "Update quota to: %lld\n", _quota * 1000);
 
