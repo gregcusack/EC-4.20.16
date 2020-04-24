@@ -261,6 +261,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	ec_message_t *init_msg_req, *init_msg_res;
 	int ret, recv;
 
+	printk(KERN_INFO "in ec_connect()!\n");
+
 	// We first check whether the server is running and we can send a request to it prior to 
 	// indicating the container as "elastic"
 	if(!GCM_ip || !GCM_port) {
@@ -288,6 +290,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		return __BADARG;
 	}
 
+	printk(KERN_INFO "pre sock create!\n");
 	ret = -1;
 //	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
@@ -295,6 +298,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
 		return ret;
 	}
+	printk(KERN_INFO "post sock create!\n");
 
 	memset(&saddr, 0, sizeof(saddr));
 
@@ -303,7 +307,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 //	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
+	printk(KERN_ALERT "[EC DBG] pre sock connect\n");
+
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
+
+	printk(KERN_ALERT "[EC DBG] post sock connect\n");
 
 	if(ret && (ret != -EINPROGRESS)){
 		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
