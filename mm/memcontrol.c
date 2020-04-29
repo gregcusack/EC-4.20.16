@@ -2175,6 +2175,7 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool oomed = false;
 	enum oom_status oom_status;
 	unsigned long new;
+	struct mem_cgroup *parent_memcg;
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2280,12 +2281,17 @@ retry:
 		new_max = memcg -> ecc -> request_memory(memcg);
 		printk(KERN_INFO "[dbg] new_max: %ld\n", new_max);
 		if (new_max != 0) {
+			parent_memcg = parent_mem_cgroup(memcg);
+			ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
+			if(ret < 0) 
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! returned: %d", ret);
+				///uhhhh no clue what to do here
+			
 			ret = mem_cgroup_resize_max(memcg, new_max, false);
-			printk(KERN_INFO "[dbg] ret val from mem_cgroup_resize_max(): %d\n", ret);
-			if(ret < 0) {
+			if(ret < 0) 
 				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
 				///uhhhh no clue what to do here
-			}
+			
 			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
 			goto retry;
 		}
