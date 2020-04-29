@@ -24,7 +24,6 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 		if(!mem_cgroup_resize_max(memcg, new_mem_limit,  is_memsw)) {
 			printk(KERN_INFO"[dbg] resize_max_mem: New mem limit of the cgroup is : %lu\n", new_mem_limit);
 			return 0;
-			return new_mem_limit;
 		}
 
 		printk(KERN_ALERT"[Error] resize_max_mem: resizing cgroup max memory unssuccessful!\n");
