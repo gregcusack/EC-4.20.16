@@ -4,3 +4,6 @@
 [submodule "EC-Agent"]
 	path = EC-Agent
 	url = git@github.com:Maziyar-Na/EC-Agent.git
+[submodule "ec_deployer"]
+	path = ec_deployer
+	url = git@github.com:gregcusack/ec_deployer.git
