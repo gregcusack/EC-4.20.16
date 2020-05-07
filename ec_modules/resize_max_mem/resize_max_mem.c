@@ -3,10 +3,6 @@
 
 long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw) {
 
-	//struct pid* task_in_cg_pid; //pid data structure for task in cgroup
-
-	//struct task_struct* tsk_in_cg; //task_struct for the task in cgroup
-	
 	struct mem_cgroup* memcg;
 	unsigned long cur_usage = 0,  mem_limit = 0;
 
@@ -27,8 +23,7 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	if (cur_usage < new_mem_limit) {
 		if(!mem_cgroup_resize_max(memcg, new_mem_limit,  is_memsw)) {
 			printk(KERN_INFO"[dbg] resize_max_mem: New mem limit of the cgroup is : %lu\n", new_mem_limit);
-			//return 0;
-			return new_mem_limit;
+			return 0;
 		}
 
 		printk(KERN_ALERT"[Error] resize_max_mem: resizing cgroup max memory unssuccessful!\n");
@@ -36,9 +31,7 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	else {
 		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit you spacified\n");
 	}
-	return 0;
-//	return 0;
-	
+	return 1;
 }
 
 static int __init resize_max_mem_init(void){

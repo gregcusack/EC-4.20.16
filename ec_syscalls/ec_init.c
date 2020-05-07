@@ -4,6 +4,7 @@
 #include<ec/resize_max_memory.h>
 #include<ec/increase_memcg_margin.h>
 #include<ec/read_quota.h>
+#include<ec/get_parent_cgid.h>
 
 int (*ec_connect_)(unsigned int, int, int, unsigned int);
 EXPORT_SYMBOL(ec_connect_);
@@ -19,6 +20,9 @@ EXPORT_SYMBOL(resize_quota_);
 
 long (*read_quota_)(uint32_t);
 EXPORT_SYMBOL(read_quota_);
+
+int (*get_parent_cgid_)(int);
+EXPORT_SYMBOL(get_parent_cgid_);
 
 void __init ec_init(void) {
 	printk(KERN_INFO"EC initialized!\n");
