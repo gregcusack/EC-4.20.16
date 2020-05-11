@@ -16,8 +16,6 @@ long read_quota(uint32_t id) {
 	struct cfs_bandwidth *cfs_b;
 	int ret = 0;
 
-	printk(KERN_INFO "read_quota syscall\n");
-
 	rcu_read_lock();
 	css_ptr = css_from_id(id, ss);
 	rcu_read_unlock();
@@ -30,7 +28,7 @@ long read_quota(uint32_t id) {
 //
 //
 	cfs_b = &tg->cfs_bandwidth;
-	printk(KERN_INFO "quota should be: %lld\n", cfs_b->quota);
+//	printk(KERN_INFO "quota should be: %lld\n", cfs_b->quota);
 
 	ret = tg_get_cfs_quota(tg);
 	if(ret < -1) {

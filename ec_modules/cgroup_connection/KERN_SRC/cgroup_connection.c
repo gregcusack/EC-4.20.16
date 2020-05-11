@@ -64,7 +64,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		}
 	set_fs(oldmm);
-	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
+//	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
 
 	return written == length ? 0 : len;
 }
@@ -87,9 +87,9 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 	read_again:
 		iter++;
-		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
+//		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
-		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
+//		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
 			if (iter > 10) {
