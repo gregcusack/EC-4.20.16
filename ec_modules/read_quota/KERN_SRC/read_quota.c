@@ -16,6 +16,8 @@ long read_quota(uint32_t id) {
 	struct cfs_bandwidth *cfs_b;
 	int ret = 0;
 
+	printk(KERN_INFO "read_quota syscall\n");
+
 	rcu_read_lock();
 	css_ptr = css_from_id(id, ss);
 	rcu_read_unlock();

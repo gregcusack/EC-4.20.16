@@ -52,10 +52,7 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 	}
 	printk(KERN_INFO "Resized quota to: %lld\n", cfs_b->quota);
 	return cfs_b->quota;
-//	return 0;
 
-
-//	return ret;
 
 }
 
