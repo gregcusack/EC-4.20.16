@@ -12,7 +12,7 @@ int get_parent_cgid(int child_cgid) {
 		printk(KERN_ALERT "[ERROR] get_parent_cgid: css_ptr == NULL.\n");
 		return 1;
 	}
-	parent_cg_ptr = css_ptr->cgroup->self.parent;
+	parent_cg_ptr = css_ptr->parent;
 	if (parent_cg_ptr)
 		return parent_cg_ptr->id;
 
