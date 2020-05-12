@@ -28,7 +28,7 @@ long read_quota(uint32_t id) {
 //
 //
 	cfs_b = &tg->cfs_bandwidth;
-	printk(KERN_INFO "quota should be: %lld\n", cfs_b->quota);
+//	printk(KERN_INFO "quota should be: %lld\n", cfs_b->quota);
 
 	ret = tg_get_cfs_quota(tg);
 	if(ret < -1) {

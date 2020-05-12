@@ -64,7 +64,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		}
 	set_fs(oldmm);
-	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
+//	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
 
 	return written == length ? 0 : len;
 }
@@ -87,9 +87,9 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 	read_again:
 		iter++;
-		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
+//		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
-		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
+//		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
 			if (iter > 10) {
@@ -257,6 +257,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
+	struct cgroup_subsys *ss = &cpu_cgrp_subsys;
 
 	ec_message_t *init_msg_req, *init_msg_res;
 	int ret, recv;
@@ -289,6 +290,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT "cfs_b error!\n");
 		return __BADARG;
 	}
+	printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
 
 	printk(KERN_INFO "pre sock create!\n");
 	ret = -1;
@@ -304,7 +306,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(GCM_port);
-//	saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
 	printk(KERN_ALERT "[EC DBG] pre sock connect\n");
@@ -318,12 +319,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		return ret;
 	}
 	
-//	opt_flag = true;
-//	ret = sockfd_cli -> ops -> setsockopt(sockfd_cli, IPPROTO_TCP, TCP_NODELAY, (char *)&opt_flag, sizeof(_Bool)); //try TCP_IPPROTO instead of SOL_TCP
-//	if(ret && (ret != -EINPROGRESS)){
-//		printk(KERN_ALERT"[ERROR] setsockopt() failed: %d.\n", ret);
-//		return ret;
-//	}
 
 	// Here, we have to validate the connection so it can fail if the server isn't running 
 	// (i.e : a registration message...)
@@ -360,7 +355,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	}
 
 	cfs_b->is_ec = 1;
-	printk(KERN_INFO "cfs_b->is_ec after set (should be 1): %d\n", cfs_b->is_ec);
 
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;

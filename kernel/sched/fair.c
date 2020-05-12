@@ -4274,7 +4274,7 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 			}
 		}
 		else {
-			printk(KERN_INFO "reset resize_quota to 1\n");
+//			printk(KERN_INFO "reset resize_quota to 1\n");
 			cfs_b->resize_quota = 0;
 		}
 	}

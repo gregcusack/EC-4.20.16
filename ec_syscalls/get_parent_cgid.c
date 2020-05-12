@@ -6,7 +6,7 @@
 SYSCALL_DEFINE1(get_parent_cgid_, int, cgid) {
 	printk(KERN_INFO "get_parent_cgid: id: %d\n", cgid);
 	if(get_parent_cgid_) {
-		printk(KERN_INFO "get_parent_cgid: calling get_parent_cgid\n");
+//		printk(KERN_INFO "get_parent_cgid: calling get_parent_cgid\n");
 		return get_parent_cgid_(cgid);
 	}
 
