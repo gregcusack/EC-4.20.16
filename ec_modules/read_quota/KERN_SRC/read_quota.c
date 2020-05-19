@@ -39,7 +39,7 @@ long read_quota(uint32_t id) {
 		printk(KERN_INFO "quota == RUNTIME INF. ret: %d\n", ret);
 		return -1;
 	}
-	printk(KERN_INFO "Quota is: %d\n", ret);
+//	printk(KERN_INFO "Quota is: %d\n", ret);
 	return ret;
 //	return 0;
 

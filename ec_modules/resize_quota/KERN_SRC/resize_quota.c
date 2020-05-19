@@ -41,7 +41,7 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] cfs_b == NULL.\n");
 		return 1;
 	}
-	printk(KERN_INFO "quota preupdate: %lld\n", cfs_b->quota);
+//	printk(KERN_INFO "quota preupdate: %lld\n", cfs_b->quota);
 //	printk(KERN_INFO "Update quota to: %lld\n", _quota * 1000);
 
 	cfs_b->resize_quota = 1;
@@ -50,7 +50,7 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 		printk(KERN_INFO "ret != 0. Error\n. ret: %d\n", ret);
 		return 1;
 	}
-	printk(KERN_INFO "Resized quota to: %lld\n", cfs_b->quota);
+//	printk(KERN_INFO "Resized quota to: %lld\n", cfs_b->quota);
 	return cfs_b->quota;
 
 
