@@ -2276,7 +2276,7 @@ retry:
 		goto force;
 
 	//ec
-	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < (new + 100)) ){
+	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < (new + 500)) ){
 		unsigned long new_max;
 		int ret;
 		new_max = memcg -> ecc -> request_memory(memcg);
