@@ -2200,7 +2200,7 @@ retry:
 		goto retry;
 	}
 
-	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
+	new = atomic_long_add_return(batch, &(memcg->memory.usage) );
 	
 	/*
 	 * Unlike in global OOM situations, memcg is not in a physical
@@ -2275,7 +2275,7 @@ retry:
 		goto force;
 
 	//ec
-	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < (new + 100)) ){
+	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ){
 		unsigned long new_max;
 		int ret;
 		new_max = memcg -> ecc -> request_memory(memcg);
