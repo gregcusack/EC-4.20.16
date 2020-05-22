@@ -2200,6 +2200,7 @@ retry:
 		goto retry;
 	}
 
+	/* EC */
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
 	/*
