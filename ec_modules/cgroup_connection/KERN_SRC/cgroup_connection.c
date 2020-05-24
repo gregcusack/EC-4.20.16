@@ -91,7 +91,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
 //		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
-			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
+			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS: ret: %d\n ", len);
 			if (iter > 10) {
 				return len;// == length ? 0 : len;
 			}
