@@ -4265,19 +4265,19 @@ void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 		return;
 
 	now = sched_clock_cpu(smp_processor_id());
-	// This logic is only for an "elastic" container..
-	if(cfs_b->is_ec) {
-		if(!cfs_b->resize_quota) { //when we set quota, we don't want to report to GCM
-			ret = cfs_b->ecc->report_cpu_usage(cfs_b);
-			if (ret) {
-				printk(KERN_ALERT "[DC DBG] __refill_cfs: DC report_cpu_usage() function returned error %d..\n", ret);
-			}
-		}
-		else {
-//			printk(KERN_INFO "reset resize_quota to 1\n");
-			cfs_b->resize_quota = 0;
-		}
-	}
+//	// This logic is only for an "elastic" container..
+//	if(cfs_b->is_ec) {
+//		if(!cfs_b->resize_quota) { //when we set quota, we don't want to report to GCM
+//			ret = cfs_b->ecc->report_cpu_usage(cfs_b);
+//			if (ret) {
+//				printk(KERN_ALERT "[DC DBG] __refill_cfs: DC report_cpu_usage() function returned error %d..\n", ret);
+//			}
+//		}
+//		else {
+////			printk(KERN_INFO "reset resize_quota to 1\n");
+//			cfs_b->resize_quota = 0;
+//		}
+//	}
 	cfs_b->runtime = cfs_b->quota;
 	cfs_b->runtime_expires = now + ktime_to_ns(cfs_b->period);
 	cfs_b->expires_seq++;

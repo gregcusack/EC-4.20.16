@@ -327,9 +327,9 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> client_ip 	= agent_ip;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;
-	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //init vals for sc
+	init_msg_req -> rsrc_amnt 	= 23;//cfs_b->quota; //init vals for sc
 	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
-	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
+//	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
