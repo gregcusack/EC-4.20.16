@@ -164,7 +164,7 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
 
-	printk(KERN_INFO "in request_memory()\n");
+	printk(KERN_INFO "in request_memory(): cg_id: %d\n", memcg->id.id);
 
 	if(!memcg) {
 		printk(KERN_ERR "[EC ERROR] request_memory(): memcg == NULL...idk what to do\n");

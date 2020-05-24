@@ -2277,23 +2277,57 @@ retry:
 
 	//ec
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < (new + 500)) ){
+		int itr = 0;
 		unsigned long new_max;
 		int ret;
 		new_max = memcg -> ecc -> request_memory(memcg);
 		printk(KERN_INFO "[dbg] new_max: %ld\n", new_max);
 		if (new_max != 0) {
 			parent_memcg = parent_mem_cgroup(memcg);
+
+retry_parent:
 			ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
-			if(ret < 0) 
-				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! returned: %d", ret);
-				///uhhhh no clue what to do here
-			
+			if(ret == -EINTR && itr < 10) {
+				itr++;
+				goto retry_parent;
+			}
+			else if(ret == -EINTR) {
+				printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() parent failed due to EINTR (memcg.id: %d). OOM kill\n", parent_memcg->id.id);
+				///uhhhh no clue what to do here --> need to OOM
+			}
+			else if(ret < 0) {
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! ret: %d", ret);
+				///uhhhh no clue what to do here --> need to OOM
+			}
+			else {
+				printk(KERN_INFO "[dbg] parent resize max successful, do container resize now\n");
+			}
+//			if(ret < 0)
+//				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! returned: %d", ret);
+
+			itr = 0;
+retry_child:
 			ret = mem_cgroup_resize_max(memcg, new_max, false);
-			if(ret < 0) 
-				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
-				///uhhhh no clue what to do here
+			if(ret == -EINTR && itr < 10) {
+				itr++;
+				goto retry_child;
+			}
+			else if(ret == -EINTR) {
+				printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() cntr. failed due to EINTR (memcg.id: %d). OOM kill\n", memcg->id.id);
+				///uhhhh no clue what to do here --> need to OOM
+			}
+			else if(ret < 0) {
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in ctnr. level! ret: %d", ret);
+				///uhhhh no clue what to do here --> need to OOM
+			}
+			else {
+				printk(KERN_INFO "[dbg] resize cntr max successful, goto retry alloc pages\n");
+			}
+//			if(ret < 0)
+//				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
+//				///uhhhh no clue what to do here
 			
-			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
+//			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
 			goto retry;
 		}
 	}
