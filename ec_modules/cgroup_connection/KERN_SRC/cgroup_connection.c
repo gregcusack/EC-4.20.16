@@ -378,6 +378,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	memcg -> ecc = _ec_c;
 	memcg -> ec_flag = 1;
 	memcg -> ec_max = 0;
+	mutex_init(&memcg -> mem_request_lock);
+
+//	mutex_lock(&memcg->mem_request_lock);
+//	mutex_unlock(&memcg->mem_request_lock);
+
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
 		
 	return tg->css.id;

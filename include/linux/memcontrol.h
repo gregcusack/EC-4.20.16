@@ -289,9 +289,12 @@ struct mem_cgroup {
 	bool			tcpmem_active;
 	int			tcpmem_pressure;
 
+	/* EC */
 	struct ec_connection* ecc;
 	int ec_flag;
 	unsigned long ec_max;
+	/* mutex for memory resizing */
+	struct mutex mem_request_lock;
 
 #ifdef CONFIG_MEMCG_KMEM
         /* Index in the kmem_cache->memcg_params.memcg_caches array */
