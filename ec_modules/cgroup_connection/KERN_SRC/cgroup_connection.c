@@ -331,6 +331,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
 //	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
 
+	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
+
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
 
