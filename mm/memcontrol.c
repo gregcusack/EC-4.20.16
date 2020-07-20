@@ -2805,6 +2805,7 @@ int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 
 	do {
 		if (signal_pending(current)) {
+			printk(KERN_ALERT "[EC DBG]: mem_cgroup_resize_max() -> Resize mem failed. Signal pending. Ret -EINTR\n")
 			ret = -EINTR;
 			break;
 		}
@@ -2817,6 +2818,7 @@ int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 		limits_invariant = memsw ? max >= memcg->memory.max :
 					   max <= memcg->memsw.max;
 		if (!limits_invariant) {
+			printk(KERN_ALERT "[EC DBG]: mem_cgroup_resize_max() -> Resize mem failed. shouldn't get here since memsw-based. Ret -EINTR\n")
 			mutex_unlock(&memcg_max_mutex);
 			ret = -EINVAL;
 			break;
