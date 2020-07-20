@@ -2281,23 +2281,38 @@ retry:
 		unsigned long new_max;
 		int ret;
 
+		if(signal_pending(current))
+			printk(KERN_ALERT "sig pending 1\n");
+
 		if(memcg -> memory.max > (new + 500)) {
 			printk(KERN_INFO "max updated before trying to acquire lock. goto retry. cgid: %d\n", memcg->id.id);
 			goto retry;
 		}
+		if(signal_pending(current))
+			printk(KERN_ALERT "sig pending 2\n");
 
 		mutex_lock(&memcg->mem_request_lock);
+		if(signal_pending(current))
+			printk(KERN_ALERT "sig pending 3\n");
 		//first case is if you're not the first proc needing more mem. mem has been resized by earlier proc
 		if(memcg -> memory.max > (new + 500)) {
 			mutex_unlock(&memcg->mem_request_lock);
+			if(signal_pending(current))
+				printk(KERN_ALERT "sig pending 4\n");
 			printk(KERN_INFO "not first proc in cg. max already updated. goto retry. cgid: %d\n", memcg->id.id);
 			goto retry;
 		}
 		else { //case you are first proc in here OR memory resize failed an you're not the first in
+			if(signal_pending(current))
+				printk(KERN_ALERT "sig pending 5\n");
 			new_max = memcg -> ecc -> request_memory(memcg);
+			if(signal_pending(current))
+				printk(KERN_ALERT "sig pending 6\n");
 			printk(KERN_INFO "[dbg] new_max: %ld for cgid: %d\n", new_max, memcg->id.id);
 			if (new_max != 0) {
 				parent_memcg = parent_mem_cgroup(memcg);
+				if(signal_pending(current))
+					printk(KERN_ALERT "sig pending 7\n");
 
 retry_parent:
 				ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
@@ -2805,7 +2820,6 @@ int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 
 	do {
 		if (signal_pending(current)) {
-			printk(KERN_ALERT "[EC DBG]: mem_cgroup_resize_max() -> Resize mem failed. Signal pending. Ret -EINTR\n");
 			ret = -EINTR;
 			break;
 		}
@@ -2818,7 +2832,6 @@ int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 		limits_invariant = memsw ? max >= memcg->memory.max :
 					   max <= memcg->memsw.max;
 		if (!limits_invariant) {
-			printk(KERN_ALERT "[EC DBG]: mem_cgroup_resize_max() -> Resize mem failed. shouldn't get here since memsw-based. Ret -EINTR\n");
 			mutex_unlock(&memcg_max_mutex);
 			ret = -EINVAL;
 			break;
