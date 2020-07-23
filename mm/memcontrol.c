@@ -2316,7 +2316,7 @@ retry:
 
 retry_parent:
 				ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
-				if(ret == -EINTR && itr < 10000) {
+				if(ret == -EINTR) {// && itr < 10000) {
 					itr++;
 					goto retry_parent;
 				}
