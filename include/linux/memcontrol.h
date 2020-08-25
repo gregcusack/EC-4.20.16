@@ -30,6 +30,7 @@
 #include <linux/vmstat.h>
 #include <linux/writeback.h>
 #include <linux/page-flags.h>
+#include <ec/ec_connection.h>
 
 struct mem_cgroup;
 struct page;
@@ -288,6 +289,10 @@ struct mem_cgroup {
 	bool			tcpmem_active;
 	int			tcpmem_pressure;
 
+	struct ec_connection* ecc;
+	int ec_flag;
+	unsigned long ec_max;
+
 #ifdef CONFIG_MEMCG_KMEM
         /* Index in the kmem_cache->memcg_params.memcg_caches array */
 	int kmemcg_id;
@@ -397,6 +402,8 @@ struct mem_cgroup *mem_cgroup_from_task(struct task_struct *p);
 
 struct mem_cgroup *get_mem_cgroup_from_mm(struct mm_struct *mm);
 
+extern int mem_cgroup_resize_max(struct mem_cgroup* memcg, unsigned long max, bool memsw);
+
 struct mem_cgroup *get_mem_cgroup_from_page(struct page *page);
 
 static inline
@@ -427,7 +434,11 @@ static inline unsigned short mem_cgroup_id(struct mem_cgroup *memcg)
 
 	return memcg->id.id;
 }
-struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
+extern struct mem_cgroup *mem_cgroup_from_id(unsigned short id);
+
+extern unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap);
+
+extern unsigned long mem_cgroup_margin(struct mem_cgroup *memcg);
 
 static inline struct mem_cgroup *lruvec_memcg(struct lruvec *lruvec)
 {
@@ -524,7 +535,7 @@ unsigned long mem_cgroup_get_zone_lru_size(struct lruvec *lruvec,
 
 void mem_cgroup_handle_over_high(void);
 
-unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg);
+extern unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg);
 
 void mem_cgroup_print_oom_info(struct mem_cgroup *memcg,
 				struct task_struct *p);
@@ -964,7 +975,7 @@ mem_cgroup_node_nr_lru_pages(struct mem_cgroup *memcg,
 	return 0;
 }
 
-static inline unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
+extern inline unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
 {
 	return 0;
 }

@@ -4258,11 +4258,26 @@ static inline u64 sched_cfs_bandwidth_slice(void)
 void __refill_cfs_bandwidth_runtime(struct cfs_bandwidth *cfs_b)
 {
 	u64 now;
+	int ret;
+	//unsigned long ec_quota;
 
 	if (cfs_b->quota == RUNTIME_INF)
 		return;
 
 	now = sched_clock_cpu(smp_processor_id());
+	// This logic is only for an "elastic" container..
+	if(cfs_b->is_ec) {
+		if(!cfs_b->resize_quota) { //when we set quota, we don't want to report to GCM
+			ret = cfs_b->ecc->report_cpu_usage(cfs_b);
+			if (ret) {
+				printk(KERN_ALERT "[DC DBG] __refill_cfs: DC report_cpu_usage() function returned error %d..\n", ret);
+			}
+		}
+		else {
+//			printk(KERN_INFO "reset resize_quota to 1\n");
+			cfs_b->resize_quota = 0;
+		}
+	}
 	cfs_b->runtime = cfs_b->quota;
 	cfs_b->runtime_expires = now + ktime_to_ns(cfs_b->period);
 	cfs_b->expires_seq++;
@@ -4304,6 +4319,17 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 			cfs_b->runtime -= amount;
 			cfs_b->idle = 0;
 		}
+//		/* EC */
+//		else if(cfs_b->is_ec && cfs_b->gcm_local_runtime > 0) { //if cfs_b->runtime <= 0 && is an EC && gcm_local_runtime > 0
+//			printk(KERN_INFO "get slice\n");
+//			amount = min(cfs_b->gcm_local_runtime, sched_cfs_bandwidth_slice());
+//			cfs_b->gcm_local_runtime -= amount;
+//			cfs_b->idle = 0;
+//		}
+//		else if(cfs_b->is_ec) {
+//			printk(KERN_INFO "no slices left. throttle\n");
+//		}
+
 	}
 	expires_seq = cfs_b->expires_seq;
 	expires = cfs_b->runtime_expires;
@@ -4884,6 +4910,10 @@ void init_cfs_bandwidth(struct cfs_bandwidth *cfs_b)
 	hrtimer_init(&cfs_b->slack_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	cfs_b->slack_timer.function = sched_cfs_slack_timer;
 	cfs_b->distribute_running = 0;
+
+	/* EC */
+	cfs_b->ecc = NULL;
+	cfs_b->is_ec = 0;
 }
 
 static void init_cfs_rq_runtime(struct cfs_rq *cfs_rq)
@@ -10148,6 +10178,10 @@ void init_tg_cfs_entry(struct task_group *tg, struct cfs_rq *cfs_rq,
 	/* guarantee group entities always have weight */
 	update_load_set(&se->load, NICE_0_LOAD);
 	se->parent = parent;
+
+	/* EC access is_ec through tg as well */
+//	tg->is_ec = tg->cfs_bandwidth.is_ec;
+
 }
 
 static DEFINE_MUTEX(shares_mutex);

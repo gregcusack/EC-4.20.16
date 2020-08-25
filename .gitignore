@@ -132,3 +132,12 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+#
+# Ignore generated datafiles 
+#
+ec_benchmarks/non_ec_baseline
+ec_benchmarks/192.168.6.10
+ec_benchmarks/ec_subcontainers
+ec_benchmarks/ec_multiple
+ec_docker/*.txt

@@ -1201,7 +1201,7 @@ bool task_in_mem_cgroup(struct task_struct *task, struct mem_cgroup *memcg)
  * Returns the maximum amount of memory @mem can be charged with, in
  * pages.
  */
-static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
+unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 {
 	unsigned long margin = 0;
 	unsigned long count;
@@ -1223,7 +1223,7 @@ static unsigned long mem_cgroup_margin(struct mem_cgroup *memcg)
 
 	return margin;
 }
-
+EXPORT_SYMBOL(mem_cgroup_margin);
 /*
  * A routine for checking "mem" is under move_account() or not.
  *
@@ -1369,6 +1369,7 @@ unsigned long mem_cgroup_get_max(struct mem_cgroup *memcg)
 	}
 	return max;
 }
+EXPORT_SYMBOL(mem_cgroup_get_max);
 
 static bool mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
 				     int order)
@@ -1385,6 +1386,7 @@ static bool mem_cgroup_out_of_memory(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	mutex_lock(&oom_lock);
 	ret = out_of_memory(&oc);
 	mutex_unlock(&oom_lock);
+	
 	return ret;
 }
 
@@ -2172,6 +2174,8 @@ static int try_charge(struct mem_cgroup *memcg, gfp_t gfp_mask,
 	bool drained = false;
 	bool oomed = false;
 	enum oom_status oom_status;
+	unsigned long new;
+	struct mem_cgroup *parent_memcg;
 
 	if (mem_cgroup_is_root(memcg))
 		return 0;
@@ -2196,6 +2200,8 @@ retry:
 		goto retry;
 	}
 
+	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
+	
 	/*
 	 * Unlike in global OOM situations, memcg is not in a physical
 	 * memory shortage.  Allow dying and OOM-killed tasks to
@@ -2267,6 +2273,34 @@ retry:
 
 	if (fatal_signal_pending(current))
 		goto force;
+
+	//ec
+	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
+		unsigned long new_max;
+		int ret;
+		new_max = memcg -> ecc -> request_memory(memcg);
+		printk(KERN_INFO "[dbg] new_max: %ld\n", new_max);
+		if (new_max != 0) {
+			parent_memcg = parent_mem_cgroup(memcg);
+			ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
+			if(ret < 0) 
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! returned: %d", ret);
+				///uhhhh no clue what to do here
+			
+			ret = mem_cgroup_resize_max(memcg, new_max, false);
+			if(ret < 0) 
+				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
+				///uhhhh no clue what to do here
+			
+			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
+			goto retry;
+		}
+	}
+	else if(memcg->ec_flag == 1) {
+		printk(KERN_INFO "[dbg] memcg->memory.max: %ld\n", memcg->memory.max);
+		printk(KERN_INFO "[dbg] new: %ld\n", new);
+	}
+
 
 	/*
 	 * keep retrying as long as the memcg oom killer is able to make
@@ -2713,7 +2747,7 @@ static inline int mem_cgroup_move_swap_account(swp_entry_t entry,
 
 static DEFINE_MUTEX(memcg_max_mutex);
 
-static int mem_cgroup_resize_max(struct mem_cgroup *memcg,
+int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 				 unsigned long max, bool memsw)
 {
 	bool enlarge = false;
@@ -2766,6 +2800,7 @@ static int mem_cgroup_resize_max(struct mem_cgroup *memcg,
 
 	return ret;
 }
+EXPORT_SYMBOL(mem_cgroup_resize_max);
 
 unsigned long mem_cgroup_soft_limit_reclaim(pg_data_t *pgdat, int order,
 					    gfp_t gfp_mask,
@@ -2978,7 +3013,7 @@ static void accumulate_memcg_tree(struct mem_cgroup *memcg,
 	}
 }
 
-static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
+unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 {
 	unsigned long val = 0;
 
@@ -2999,6 +3034,7 @@ static unsigned long mem_cgroup_usage(struct mem_cgroup *memcg, bool swap)
 	}
 	return val;
 }
+EXPORT_SYMBOL(mem_cgroup_usage);
 
 enum {
 	RES_USAGE,
@@ -4349,6 +4385,7 @@ struct mem_cgroup *mem_cgroup_from_id(unsigned short id)
 	WARN_ON_ONCE(!rcu_read_lock_held());
 	return idr_find(&mem_cgroup_idr, id);
 }
+EXPORT_SYMBOL(mem_cgroup_from_id);
 
 static int alloc_mem_cgroup_per_node_info(struct mem_cgroup *memcg, int node)
 {

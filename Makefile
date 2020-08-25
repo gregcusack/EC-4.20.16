@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 20
 SUBLEVEL = 16
-EXTRAVERSION =
+EXTRAVERSION = DC
 NAME = Shy Crocodile
 
 # *DOCUMENTATION*
@@ -970,7 +970,7 @@ endif
 PHONY += prepare0
 
 ifeq ($(KBUILD_EXTMOD),)
-core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/
+core-y		+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ block/ ec_syscalls/
 
 vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
