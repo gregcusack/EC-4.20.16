@@ -2303,8 +2303,12 @@ retry:
 			goto retry;
 		}
 		else { //case you are first proc in here OR memory resize failed an you're not the first in
+			sigset_t mask;
 			if(signal_pending(current))
 				printk(KERN_ALERT "sig pending 5\n");
+			
+			sigfillset(&mask);
+			sigprocmask(SIG_BLOCK, &mask, NULL);
 			new_max = memcg -> ecc -> request_memory(memcg);
 			if(signal_pending(current))
 				printk(KERN_ALERT "sig pending 6\n");
@@ -2331,7 +2335,7 @@ retry_parent:
 				else {
 					printk(KERN_INFO "[dbg] parent resize max successful, do container resize now\n");
 				}
-
+				
 				itr = 0;
 retry_child:
 				ret = mem_cgroup_resize_max(memcg, new_max, false);
@@ -2350,6 +2354,7 @@ retry_child:
 				else {
 					printk(KERN_INFO "[dbg] resize cntr max successful, goto retry alloc pages\n");
 				}
+				sigprocmask(SIG_UNBLOCK, &mask, NULL);
 				mutex_unlock(&memcg->mem_request_lock);
 				goto retry;
 			}
