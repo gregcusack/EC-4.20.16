@@ -2330,10 +2330,12 @@ retry_parent:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() parent failed due to EINTR (memcg.id: %d). OOM kill\n", parent_memcg->id.id);
+					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! ret: %d", ret);
+					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else {
@@ -2349,10 +2351,12 @@ retry_child:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() cntr. failed due to EINTR (memcg.id: %d). OOM kill\n", memcg->id.id);
+					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in ctnr. level! ret: %d", ret);
+					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else {
