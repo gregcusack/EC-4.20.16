@@ -2200,10 +2200,7 @@ retry:
 		goto retry;
 	}
 
-<<<<<<< HEAD
 	/* EC */
-=======
->>>>>>> dev
 	new = atomic_long_add_return(nr_pages, &(memcg->memory.usage) );
 	
 	/*
@@ -2279,7 +2276,6 @@ retry:
 		goto force;
 
 	//ec
-<<<<<<< HEAD
 	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < (new + 500)) ){
 		int itr = 0;
 		unsigned long new_max;
@@ -2364,39 +2360,13 @@ retry_child:
 			}
 		}
 		mutex_unlock(&memcg->mem_request_lock);
-=======
-	if( (memcg -> ec_flag == 1) && (memcg -> memory.max < new ) ){
-		unsigned long new_max;
-		int ret;
-		new_max = memcg -> ecc -> request_memory(memcg);
-		printk(KERN_INFO "[dbg] new_max: %ld\n", new_max);
-		if (new_max != 0) {
-			parent_memcg = parent_mem_cgroup(memcg);
-			ret = mem_cgroup_resize_max(parent_memcg, new_max, false);
-			if(ret < 0) 
-				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! returned: %d", ret);
-				///uhhhh no clue what to do here
-			
-			ret = mem_cgroup_resize_max(memcg, new_max, false);
-			if(ret < 0) 
-				printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed! returned: %d", ret);
-				///uhhhh no clue what to do here
-			
-			printk(KERN_INFO "[dbg] resize max successful, goto retry alloc pages\n");
-			goto retry;
-		}
->>>>>>> dev
 	}
 	else if(memcg->ec_flag == 1) {
 		printk(KERN_INFO "[dbg] memcg->memory.max: %ld\n", memcg->memory.max);
 		printk(KERN_INFO "[dbg] new: %ld\n", new);
 	}
 
-<<<<<<< HEAD
 ec_mem_fail:
-
-=======
->>>>>>> dev
 
 	/*
 	 * keep retrying as long as the memcg oom killer is able to make
