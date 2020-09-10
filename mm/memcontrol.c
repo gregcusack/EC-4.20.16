@@ -2306,7 +2306,7 @@ retry:
 			sigset_t mask;
 			if(signal_pending(current))
 				printk(KERN_ALERT "sig pending 5\n");
-			
+
 			sigfillset(&mask);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 			new_max = memcg -> ecc -> request_memory(memcg);
@@ -2326,18 +2326,18 @@ retry_parent:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() parent failed due to EINTR (memcg.id: %d). OOM kill\n", parent_memcg->id.id);
-					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
+					sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! ret: %d", ret);
-					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
+					sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else {
 					printk(KERN_INFO "[dbg] parent resize max successful, do container resize now\n");
 				}
-				
+
 				itr = 0;
 retry_child:
 				ret = mem_cgroup_resize_max(memcg, new_max, false);
@@ -2347,12 +2347,12 @@ retry_child:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() cntr. failed due to EINTR (memcg.id: %d). OOM kill\n", memcg->id.id);
-					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
+					sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in ctnr. level! ret: %d", ret);
-					 sigprocmask(SIG_UNBLOCK, &mask, NULL);
+					sigprocmask(SIG_UNBLOCK, &mask, NULL);
 					goto ec_mem_fail;
 				}
 				else {
