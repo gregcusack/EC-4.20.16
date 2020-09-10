@@ -2306,6 +2306,7 @@ retry:
 			sigset_t mask;
 			if(signal_pending(current))
 				printk(KERN_ALERT "sig pending 5\n");
+
 			sigfillset(&mask);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 			new_max = memcg -> ecc -> request_memory(memcg);
