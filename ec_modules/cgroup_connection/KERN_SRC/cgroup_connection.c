@@ -91,11 +91,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
 //		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
-<<<<<<< HEAD
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS: ret: %d\n ", len);
-=======
-			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS\n ");
->>>>>>> dev
 			if (iter > 10) {
 				return len;// == length ? 0 : len;
 			}
@@ -146,11 +142,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	sockfd 							= cfs_b->ecc->ec_cli;
 
-<<<<<<< HEAD
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
-=======
-	printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
->>>>>>> dev
 
 //	spin_lock(&sock_lock);
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), 0);
@@ -172,11 +164,7 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 	struct socket* sockfd = NULL;
 	uint64_t to_return;
 
-<<<<<<< HEAD
 	printk(KERN_INFO "in request_memory(): cg_id: %d\n", memcg->id.id);
-=======
-	printk(KERN_INFO "in request_memory()\n");
->>>>>>> dev
 
 	if(!memcg) {
 		printk(KERN_ERR "[EC ERROR] request_memory(): memcg == NULL...idk what to do\n");
@@ -339,17 +327,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> client_ip 	= agent_ip;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;
-<<<<<<< HEAD
 	init_msg_req -> rsrc_amnt 	= 23;//cfs_b->quota; //init vals for sc
 	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
 //	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
 
 	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
-=======
-	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //init vals for sc
-	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
-	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
->>>>>>> dev
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
@@ -398,14 +380,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	memcg -> ecc = _ec_c;
 	memcg -> ec_flag = 1;
 	memcg -> ec_max = 0;
-<<<<<<< HEAD
 	mutex_init(&memcg -> mem_request_lock);
 
 //	mutex_lock(&memcg->mem_request_lock);
 //	mutex_unlock(&memcg->mem_request_lock);
 
-=======
->>>>>>> dev
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
 		
 	return tg->css.id;
