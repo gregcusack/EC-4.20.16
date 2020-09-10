@@ -2286,7 +2286,6 @@ retry:
 
 		if(memcg -> memory.max > (new + 500)) {
 			printk(KERN_INFO "max updated before trying to acquire lock. goto retry. cgid: %d\n", memcg->id.id);
-<<<<<<< HEAD
 			goto retry;
 		}
 		if(signal_pending(current))
@@ -2303,33 +2302,10 @@ retry:
 			printk(KERN_INFO "not first proc in cg. max already updated. goto retry. cgid: %d\n", memcg->id.id);
 			goto retry;
 		}
-=======
-			goto retry;
-		}
-		if(signal_pending(current))
-			printk(KERN_ALERT "sig pending 2\n");
-
-		mutex_lock(&memcg->mem_request_lock);
-		if(signal_pending(current))
-			printk(KERN_ALERT "sig pending 3\n");
-		//first case is if you're not the first proc needing more mem. mem has been resized by earlier proc
-		if(memcg -> memory.max > (new + 500)) {
-			mutex_unlock(&memcg->mem_request_lock);
-			if(signal_pending(current))
-				printk(KERN_ALERT "sig pending 4\n");
-			printk(KERN_INFO "not first proc in cg. max already updated. goto retry. cgid: %d\n", memcg->id.id);
-			goto retry;
-		}
->>>>>>> dev
 		else { //case you are first proc in here OR memory resize failed an you're not the first in
 			sigset_t mask;
 			if(signal_pending(current))
 				printk(KERN_ALERT "sig pending 5\n");
-<<<<<<< HEAD
-
-=======
-			
->>>>>>> dev
 			sigfillset(&mask);
 			sigprocmask(SIG_BLOCK, &mask, NULL);
 			new_max = memcg -> ecc -> request_memory(memcg);
@@ -2349,28 +2325,17 @@ retry_parent:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() parent failed due to EINTR (memcg.id: %d). OOM kill\n", parent_memcg->id.id);
-<<<<<<< HEAD
 					sigprocmask(SIG_UNBLOCK, &mask, NULL);
-=======
->>>>>>> dev
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in pod level! ret: %d", ret);
-<<<<<<< HEAD
 					sigprocmask(SIG_UNBLOCK, &mask, NULL);
-=======
->>>>>>> dev
 					goto ec_mem_fail;
 				}
 				else {
 					printk(KERN_INFO "[dbg] parent resize max successful, do container resize now\n");
 				}
-<<<<<<< HEAD
-
-=======
-				
->>>>>>> dev
 				itr = 0;
 retry_child:
 				ret = mem_cgroup_resize_max(memcg, new_max, false);
@@ -2380,18 +2345,12 @@ retry_child:
 				}
 				else if(ret == -EINTR) {
 					printk(KERN_ERR "[dbg]: mem_cgroup_resize_max() cntr. failed due to EINTR (memcg.id: %d). OOM kill\n", memcg->id.id);
-<<<<<<< HEAD
 					sigprocmask(SIG_UNBLOCK, &mask, NULL);
-=======
->>>>>>> dev
 					goto ec_mem_fail;
 				}
 				else if(ret < 0) {
 					printk(KERN_ERR "[dbg] mem_cgroup_resize_max() failed in ctnr. level! ret: %d", ret);
-<<<<<<< HEAD
 					sigprocmask(SIG_UNBLOCK, &mask, NULL);
-=======
->>>>>>> dev
 					goto ec_mem_fail;
 				}
 				else {
