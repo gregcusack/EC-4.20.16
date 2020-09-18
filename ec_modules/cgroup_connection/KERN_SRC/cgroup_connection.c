@@ -388,7 +388,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
 		
-	printf(KERN_INFO "[EC DBG]: tg->css.id: %d, cgid: %d\n", tg->css.id, cgid);
+	printk(KERN_INFO "[EC DBG]: tg->css.id: %d, cgid: %d\n", tg->css.id, cgid);
 	return tg->css.id;
 //	return 0;
 
