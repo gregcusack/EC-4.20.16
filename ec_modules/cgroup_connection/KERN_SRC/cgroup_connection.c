@@ -328,10 +328,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;
 	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //23;//cfs_b->quota; //init vals for sc
-	init_msg_req -> request 	= cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc
-	int cgid = init_msg_req->cgroup_id;
-	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld, nr_throttled: %d, cgid: %d\n", cfs_b->quota, cfs_b->nr_throttled, cgid);
-
+	init_msg_req -> request 	= cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc	
 	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
@@ -388,7 +385,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
 		
-	printk(KERN_INFO "[EC DBG]: tg->css.id: %d, cgid: %d\n", tg->css.id, cgid);
 	return tg->css.id;
 //	return 0;
 
