@@ -236,7 +236,7 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 	if(init_msg_req->cgroup_id != init_msg_res->cgroup_id
 			|| init_msg_req->req_type != init_msg_res->req_type
 			|| init_msg_req->rsrc_amnt != init_msg_res->rsrc_amnt
-			|| (!init_msg_req->request) != init_msg_res->request) {
+			|| init_msg_req->request == init_msg_res->request + 1) {
 		printk(KERN_ERR "[EC ERROR] Init error, received wrong info back from server on init\n");
 		printk(KERN_ALERT "[MSG tx]: %d, %d, %lld, %d\n", init_msg_req->cgroup_id, init_msg_req->req_type, init_msg_req->rsrc_amnt, init_msg_req->request);
 		printk(KERN_ALERT "[MSG rx]: %d, %d, %lld, %d\n", init_msg_res->cgroup_id, init_msg_res->req_type, init_msg_res->rsrc_amnt, init_msg_res->request);
@@ -328,9 +328,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;
 	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //23;//cfs_b->quota; //init vals for sc
-	init_msg_req -> request 	= 1;//cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc
-//	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
-
+	init_msg_req -> request 	= cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc	
 	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
 
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
