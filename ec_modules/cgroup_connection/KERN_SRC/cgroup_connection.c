@@ -327,8 +327,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	init_msg_req -> client_ip 	= agent_ip;
 	init_msg_req -> req_type 	= 2;
 	init_msg_req -> cgroup_id 	= tg->css.id;
-	init_msg_req -> rsrc_amnt 	= 23;//cfs_b->quota; //init vals for sc
-	init_msg_req -> request 	= 1; //cfs_b->nr_throttled;  //init vals for sc
+	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //23;//cfs_b->quota; //init vals for sc
+	init_msg_req -> request 	= cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc
 //	printk(KERN_ALERT "[EC DBG] cfs_b->quota: %lld\n", cfs_b->quota);
 
 	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
