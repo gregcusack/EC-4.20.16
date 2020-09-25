@@ -1,0 +1,3 @@
+#ifndef DEBUG_LOGS_COMPILED
+#define DEBUG_LOGS_COMPILED 0
+#endif

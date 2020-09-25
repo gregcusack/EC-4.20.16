@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <net/if.h>
 #include <arpa/inet.h>
+#include "debug-defs-compiled.h"
 
 #define __NR_SYSCALL__ 335
 
