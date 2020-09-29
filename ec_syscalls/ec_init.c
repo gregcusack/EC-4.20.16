@@ -25,6 +25,9 @@ EXPORT_SYMBOL(read_quota_);
 unsigned long (*read_mem_usage_)(unsigned short);
 EXPORT_SYMBOL(read_mem_usage_);
 
+unsigned long (*read_mem_limit_)(unsigned short);
+EXPORT_SYMBOL(read_mem_limit_);
+
 int (*get_parent_cgid_)(int);
 EXPORT_SYMBOL(get_parent_cgid_);
 

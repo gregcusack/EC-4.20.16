@@ -350,6 +350,7 @@
 339 64		read_quota_		__x64_sys_read_quota_
 340 64		get_parent_cgid_	__x64_sys_get_parent_cgid_
 341 64      read_mem_usage_ __x64_sys_read_mem_usage_
+342 64      read_mem_limit_ __x64_sys_read_mem_limit_
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
