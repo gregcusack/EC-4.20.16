@@ -6,8 +6,10 @@
 SYSCALL_DEFINE4(ec_connect_, unsigned int, GCM_ip, int, GCM_port, int, pid, unsigned int, agent_ip) {
 	printk(KERN_INFO "in ec_connect() sys call. pid: %d\n", pid);
 	if(ec_connect_) {
-		printk(KERN_DEBUG "in ec_connect() calling ec_connect_\n");
 		return ec_connect_(GCM_ip, GCM_port, pid, agent_ip);
+	}
+	else {
+		printk(KERN_ALERT "ec_connect() FAILED. is module inserted?\n");
 	}
 
 	return 2;

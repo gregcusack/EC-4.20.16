@@ -8,6 +8,9 @@ SYSCALL_DEFINE1(get_parent_cgid_, int, cgid) {
 	if(get_parent_cgid_) {
 		return get_parent_cgid_(cgid);
 	}
+	else {
+		printk(KERN_ALERT "get_parent_cgid() FAILED. is module inserted?\n");
+	}
 
 	return 2;
 }

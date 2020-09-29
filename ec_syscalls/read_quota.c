@@ -8,6 +8,9 @@ SYSCALL_DEFINE1(read_quota_, uint32_t, id) {
 	if(read_quota_) {
 		return read_quota_(id);
 	}
+	else {
+		printk(KERN_ALERT "read_quota() FAILED. is module inserted?\n");
+	}
 
 	return 2;
 }
