@@ -64,7 +64,6 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		}
 	set_fs(oldmm);
-//	printk(KERN_ALERT "[DC DBG]: (%d, %ld, %d)\n", written, length, len);
 
 	return written == length ? 0 : len;
 }
@@ -87,9 +86,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 
 	read_again:
 		iter++;
-//		printk(KERN_INFO "tcp_rcv before kernel_recvmsg\n");
 		len = kernel_recvmsg(sock, &msg, &vec, length, length, (flags));
-//		printk(KERN_INFO "tcp_rcv after kernel_recvmsg\n");
 		if (len == -EAGAIN || len == -ERESTARTSYS) {
 			printk(KERN_ALERT "[EC DEBUG] returned EAGAIN or ERESTARTSYS: ret: %d\n ", len);
 			if (iter > 10) {
@@ -97,7 +94,7 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 			}
 			goto read_again;
 		}
-	printk(KERN_ALERT "[DC DBG]: (%d, %d)\n",length, len);
+	// printk(KERN_ALERT "[DC DBG]: (%d, %d)\n",length, len);
 	return len;//len == length ? 0:len;
 }
 
@@ -124,7 +121,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
-//	return 0;
 
 	if (!cfs_b) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
@@ -327,7 +323,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
 
-	printk(KERN_DEBUG "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
+	// printk(KERN_DEBUG "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
 	if (recv == 0) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
