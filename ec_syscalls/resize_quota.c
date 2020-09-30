@@ -4,10 +4,12 @@
 #include <linux/syscalls.h>
 
 SYSCALL_DEFINE2(resize_quota_, uint32_t, id, uint64_t, _quota) {
-	printk(KERN_INFO "resize_quota: id: %d, quota: %lld\n", id, _quota);
+	// printk(KERN_DEBUG "resize_quota: id: %d, quota: %lld\n", id, _quota);
 	if(resize_quota_) {
-//		printk(KERN_INFO "resize_quota: calling resize_quota_\n");
 		return resize_quota_(id, _quota);
+	}
+	else {
+		printk(KERN_ALERT "resize_quota() FAILED. is module inserted?\n");
 	}
 
 	return 2;

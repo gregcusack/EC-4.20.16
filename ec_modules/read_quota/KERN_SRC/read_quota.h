@@ -30,6 +30,7 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
+#include "../../debug-defs.h"
 
 extern long tg_get_cfs_quota(struct task_group *tg);
 

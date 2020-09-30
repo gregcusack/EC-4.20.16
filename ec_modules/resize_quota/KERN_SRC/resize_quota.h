@@ -27,8 +27,7 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
-//#
-//#include <../tools/include/linux/kernel.h>
+#include "../../debug-defs.h"
 
 #define __BADARG -1
 

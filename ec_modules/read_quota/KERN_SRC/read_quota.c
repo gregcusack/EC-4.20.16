@@ -9,6 +9,7 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #include"read_quota.h"
 
+
 long read_quota(uint32_t id) {
 	struct task_group *tg;
 	struct cgroup_subsys_state *css_ptr;
@@ -24,12 +25,8 @@ long read_quota(uint32_t id) {
 		printk("Container: %d does not exist!\n", id);
 		return 1;
 	}
-//	tg = css_tg(css);
-//
-//
-	cfs_b = &tg->cfs_bandwidth;
-//	printk(KERN_INFO "quota should be: %lld\n", cfs_b->quota);
 
+	cfs_b = &tg->cfs_bandwidth;
 	ret = tg_get_cfs_quota(tg);
 	if(ret < -1) {
 		printk(KERN_INFO "ret != 0. Error. ret: %d\n", ret);
@@ -39,13 +36,10 @@ long read_quota(uint32_t id) {
 		printk(KERN_INFO "quota == RUNTIME INF. ret: %d\n", ret);
 		return -1;
 	}
+#if DEBUG_LOGS
 	printk(KERN_INFO "Quota is: %d\n", ret);
+#endif
 	return ret;
-//	return 0;
-
-
-//	return ret;
-
 }
 
 
