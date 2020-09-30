@@ -21,6 +21,7 @@
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
 #include <linux/swap.h>
+#include "../debug-defs.h"
 
 #define __BADARG -1
 #define TRUE 1

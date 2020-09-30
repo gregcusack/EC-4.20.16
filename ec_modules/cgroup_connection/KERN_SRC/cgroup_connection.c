@@ -290,17 +290,14 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT "cfs_b error!\n");
 		return __BADARG;
 	}
-	printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
+	// printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
 
-	printk(KERN_INFO "pre sock create!\n");
 	ret = -1;
-//	ret = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	if(ret < 0){
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
 		return ret;
 	}
-	printk(KERN_INFO "post sock create!\n");
 
 	memset(&saddr, 0, sizeof(saddr));
 
@@ -308,11 +305,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	saddr.sin_port = htons(GCM_port);
 	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
-	printk(KERN_ALERT "[EC DBG] pre sock connect\n");
-
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
-
-	printk(KERN_ALERT "[EC DBG] post sock connect\n");
 
 	if(ret && (ret != -EINPROGRESS)){
 		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
@@ -334,7 +327,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
 	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
 
-	printk(KERN_ALERT "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
+	printk(KERN_DEBUG "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
 	if (recv == 0) {
 	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
 	 	return __BADARG;
@@ -346,16 +339,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	}
 	kfree(init_msg_req);
 
-	// TODO: Add confirmation that the init response from the server is correct?
-
-	printk(KERN_INFO "cfs_b->is_ec before set (should be 0): %d\n", cfs_b->is_ec);
 	if(cfs_b->is_ec != 0) {
 		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
-//		return __BADARG;
 	}
 
 	cfs_b->is_ec = 1;
-
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;
 	cfs_b->resize_quota = 0;			//TEST
@@ -380,14 +368,9 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	memcg -> ec_max = 0;
 	mutex_init(&memcg -> mem_request_lock);
 
-//	mutex_lock(&memcg->mem_request_lock);
-//	mutex_unlock(&memcg->mem_request_lock);
-
-	printk(KERN_INFO"[Success] mem_cgroup connection initialized! mem_cg->ec_flag: %d\n", memcg->ec_flag);
+	printk(KERN_INFO"[Success] mem_cgroup connection initialized! cgid: %d\n", tg->css.id);
 		
 	return tg->css.id;
-//	return 0;
-
 }
 
 

@@ -20,6 +20,7 @@
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
+#include "../debug-defs.h"
 
 #define __BADARG -1
 

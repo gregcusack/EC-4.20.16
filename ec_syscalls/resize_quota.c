@@ -4,7 +4,7 @@
 #include <linux/syscalls.h>
 
 SYSCALL_DEFINE2(resize_quota_, uint32_t, id, uint64_t, _quota) {
-	printk(KERN_DEBUG "resize_quota: id: %d, quota: %lld\n", id, _quota);
+	// printk(KERN_DEBUG "resize_quota: id: %d, quota: %lld\n", id, _quota);
 	if(resize_quota_) {
 		return resize_quota_(id, _quota);
 	}

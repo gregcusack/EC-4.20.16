@@ -4,7 +4,7 @@
 #include <linux/syscalls.h>
 
 SYSCALL_DEFINE1(get_parent_cgid_, int, cgid) {
-	printk(KERN_DEBUG "get_parent_cgid: id: %d\n", cgid);
+	// printk(KERN_DEBUG "get_parent_cgid: id: %d\n", cgid);
 	if(get_parent_cgid_) {
 		return get_parent_cgid_(cgid);
 	}

@@ -15,31 +15,26 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 	struct mem_cgroup* memcg;
 	unsigned long cur_usage = 0,  mem_limit = 0, nr_reclaimed = 0;
 	memcg = mem_cgroup_from_task(tsk_in_cg);
-	//rcu_read_lock();
-	//memcg = mem_cgroup_from_id(id);
-
-	//if (!memcg)
-	//	return __BADARG;
-
-	//rcu_read_unlock();
-
 
 	cur_usage = mem_cgroup_usage(memcg, is_memsw);
 	mem_limit = mem_cgroup_get_max(memcg);
+#if DEBUG_LOGS
 	printk(KERN_INFO"[dbg] increase_memcg_margin: Current usage of the cgroup is %lu\n", cur_usage);
 	printk(KERN_INFO"[dbg] increase_memcg_margin: Mem limit of the cgroup is %lu\n", mem_limit);
 	printk(KERN_INFO"[dbg] increase_memcg_margin: Before reclaiming pages, memory margin is: %lu\n", mem_cgroup_margin(memcg));
+#endif
 	if (mem_limit > cur_usage) {
 		if((nr_reclaimed = try_to_free_mem_cgroup_pages(memcg, nr_pages, GFP_KERNEL, TRUE)) > 0) {
+#if DEBUG_LOGS
 			printk(KERN_INFO"[dbg] increase_memcg_margin: number of reclaimed pages is: %lu\n", nr_reclaimed);
+#endif
 			printk(KERN_INFO"[dbg] increase_memcg_margin: After reclaiming pages, memory margin is: %lu\n", mem_cgroup_margin(memcg));
 			return nr_reclaimed;
 		}
-
 		printk(KERN_ALERT"[Error] increase_memcg_margin: no pages reclaimed!\n");
 	}
 	else {
-		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit you spacified\n");
+		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit specified\n");
 	}
 	return 0;
 	
