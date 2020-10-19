@@ -7,15 +7,18 @@ int get_parent_cgid(int child_cgid) {
 
 	rcu_read_lock();
 	css_ptr = css_from_id(child_cgid, ss);
-	rcu_read_unlock();
 	if(!css_ptr) {
+		rcu_read_unlock();
 		printk(KERN_ALERT "[ERROR] get_parent_cgid: css_ptr == NULL.\n");
 		return 1;
 	}
 	parent_cg_ptr = css_ptr->parent;
-	if (parent_cg_ptr)
+	if (parent_cg_ptr) {
+		rcu_read_unlock();
 		return parent_cg_ptr->id;
-		
+	}
+	
+	rcu_read_unlock();
 	printk(KERN_ALERT "[ERROR] get_parent_cgid: parent_cg_ptr == NULL.\n");
 	return -1;
 
