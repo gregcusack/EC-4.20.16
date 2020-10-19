@@ -274,7 +274,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	if(!tsk_in_cg)
 		return __BADARG;
 
-	memcg = mem_cgroup_from_task(tsk_in_cg);
 	tg = tsk_in_cg->sched_task_group;
 	if(!tg) {
 		printk(KERN_ALERT "[ERROR] tg not found! exiting\n");
@@ -307,33 +306,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
 		return ret;
 	}
-	
-
-	// Here, we have to validate the connection so it can fail if the server isn't running 
-	// (i.e : a registration message...)
-	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	init_msg_req -> client_ip 	= agent_ip;
-	init_msg_req -> req_type 	= 2;
-	init_msg_req -> cgroup_id 	= tg->css.id;
-	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //23;//cfs_b->quota; //init vals for sc
-	init_msg_req -> request 	= cfs_b->nr_throttled; //1; //cfs_b->nr_throttled;  //init vals for sc	
-	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
-
-	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
-	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
-
-	// printk(KERN_DEBUG "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
-	if (recv == 0) {
-	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
-	 	return __BADARG;
-	}
-
-	if(validate_init(init_msg_req, init_msg_res)) {
-		printk(KERN_ALERT "[EC ERROR] Response from server did not match what init sent\n");
-		return __BADARG;
-	}
-	kfree(init_msg_req);
 
 	if(cfs_b->is_ec != 0) {
 		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
@@ -343,9 +315,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	cfs_b->parent_tg = tg;
 	cfs_b->gcm_local_runtime = 0;
 	cfs_b->resize_quota = 0;			//TEST
-
-	if(!memcg)
-		return __BADARG;
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
@@ -359,13 +328,51 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	}
 	printk(KERN_INFO"[Success] cfb_b successfully connected to ec_c!\n");
 
-	memcg -> ecc = _ec_c;
+	rcu_read_lock();
+	memcg = mem_cgroup_from_task(tsk_in_cg);
+	if(!memcg) {
+		printk(KERN_ALERT "failed to get memcg in sys connect! ahhhh. returning\n");
+		return __BADARG;
+	}
 	memcg -> ec_flag = 1;
+	memcg -> ecc = _ec_c;
 	memcg -> ec_max = 0;
 	mutex_init(&memcg -> mem_request_lock);
+	rcu_read_unlock();	
 
-	printk(KERN_INFO"[Success] mem_cgroup connection initialized! cgid: %d\n", tg->css.id);
+	// Here, we have to validate the connection so it can fail if the server isn't running 
+	// (i.e : a registration message...)
+	init_msg_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	init_msg_res = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	init_msg_req -> client_ip 	= agent_ip;
+	init_msg_req -> req_type 	= 2;
+	init_msg_req -> cgroup_id 	= tg->css.id;
+	init_msg_req -> rsrc_amnt 	= cfs_b->quota; //init vals for sc
+	init_msg_req -> request 	= cfs_b->nr_throttled;  //init vals for sc
+	printk(KERN_INFO "connecting container to gcm with cgroup_id: %d", init_msg_req -> cgroup_id);
+
+	tcp_send(sockfd_cli, (const char*)init_msg_req, sizeof(ec_message_t), 0);
+	recv = tcp_rcv(sockfd_cli, (char*)init_msg_res, sizeof(ec_message_t), 0);
+
+	// printk(KERN_DEBUG "[EC DBG] BYTES READ FROM INIT SERVER RESPONSE: %d\n", recv);
+	if (recv == 0) {
+	 	printk(KERN_ALERT "[EC ERROR] NO INIT RESPONSE FROM SERVER\n");
+		 	kfree(init_msg_res);
+			kfree(init_msg_req);
+	 	return __BADARG;
+	}
+
+	if(validate_init(init_msg_req, init_msg_res)) {
+		kfree(init_msg_res);
+		kfree(init_msg_req);
+		printk(KERN_ALERT "[EC ERROR] Response from server did not match what init sent\n");
+		return __BADARG;
+	}
+
+	printk(KERN_INFO"[Success] mem_cgroup connection initialized! cgid: %d, memcg ec_flag: %d\n", tg->css.id, memcg->ec_flag);
 		
+	kfree(init_msg_res);
+	kfree(init_msg_req);
 	return tg->css.id;
 }
 

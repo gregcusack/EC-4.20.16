@@ -19,8 +19,8 @@ long read_quota(uint32_t id) {
 
 	rcu_read_lock();
 	css_ptr = css_from_id(id, ss);
-	rcu_read_unlock();
 	tg = container_of(css_ptr, struct task_group, css);
+	rcu_read_unlock();
 	if(!tg) {
 		printk("Container: %d does not exist!\n", id);
 		return 1;

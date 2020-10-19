@@ -9,14 +9,14 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	rcu_read_lock();
 	memcg = mem_cgroup_from_id(id);
 
-	if (!memcg)
+	if (!memcg) {
+		rcu_read_unlock();
 		return __BADARG;
-
-	rcu_read_unlock();
-
+	}
 
 	cur_usage = mem_cgroup_usage(memcg, is_memsw);
 	mem_limit = mem_cgroup_get_max(memcg);
+
 #if DEBUG_LOGS
 	printk(KERN_INFO"[dbg] resize_max_mem: Current usage of the cgroup: %lu, mem_limit: %lu\n", cur_usage, mem_limit);
 	printk(KERN_INFO"[dbg] resize_max_mem: attempt to resize to: %lu\n", new_mem_limit);
@@ -24,14 +24,15 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	if (cur_usage < new_mem_limit) {
 		if(!mem_cgroup_resize_max(memcg, new_mem_limit,  is_memsw)) {
 			printk(KERN_INFO"[dbg] resize_max_mem: New mem limit of the cgroup is : %lu\n", new_mem_limit);
+			rcu_read_unlock();
 			return 0;
 		}
-
 		printk(KERN_ALERT"[Error] resize_max_mem: resizing cgroup max memory unssuccessful!\n");
 	}
 	else {
-		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit you spacified\n");
+		printk(KERN_INFO"[ERROR] Current container memory usage is more than the new limit desired\n");
 	}
+	rcu_read_unlock();
 	return 1;
 }
 
