@@ -370,6 +370,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	}
 
 	printk(KERN_INFO"[Success] mem_cgroup connection initialized! cgid: %d, memcg ec_flag: %d\n", tg->css.id, memcg->ec_flag);
+
 		
 	kfree(init_msg_res);
 	kfree(init_msg_req);
