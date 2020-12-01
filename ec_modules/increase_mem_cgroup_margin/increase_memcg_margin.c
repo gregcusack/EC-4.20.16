@@ -14,10 +14,10 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 	
 	struct mem_cgroup* memcg;
 	unsigned long cur_usage = 0,  mem_limit = 0, nr_reclaimed = 0;
-	rcu_read_lock();
+	// rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
 	if(!memcg) {
-		rcu_read_unlock();
+		// rcu_read_unlock();
 		printk(KERN_INFO"[dbg] memcg is NULL in increase_memcg_margin()\n");
 		return __BADARG;
 	}
@@ -35,7 +35,7 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 			printk(KERN_INFO"[dbg] increase_memcg_margin: number of reclaimed pages is: %lu\n", nr_reclaimed);
 #endif
 			printk(KERN_INFO"[dbg] increase_memcg_margin: After reclaiming pages, memory margin is: %lu\n", mem_cgroup_margin(memcg));
-			rcu_read_unlock();
+			// rcu_read_unlock();
 			return nr_reclaimed;
 		}
 		printk(KERN_ALERT"[Error] increase_memcg_margin: no pages reclaimed!\n");
