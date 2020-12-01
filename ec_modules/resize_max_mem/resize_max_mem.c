@@ -10,7 +10,7 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	memcg = mem_cgroup_from_id(id);
 
 	if (!memcg) {
-		// rcu_read_unlock();
+		rcu_read_unlock();
 		return __BADARG;
 	}
 	rcu_read_unlock();

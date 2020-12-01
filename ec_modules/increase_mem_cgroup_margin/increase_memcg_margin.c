@@ -14,13 +14,14 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 	
 	struct mem_cgroup* memcg;
 	unsigned long cur_usage = 0,  mem_limit = 0, nr_reclaimed = 0;
-	// rcu_read_lock();
+	rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
 	if(!memcg) {
-		// rcu_read_unlock();
+		rcu_read_unlock();
 		printk(KERN_INFO"[dbg] memcg is NULL in increase_memcg_margin()\n");
 		return __BADARG;
 	}
+	rcu_read_unlock();
 
 	cur_usage = mem_cgroup_usage(memcg, is_memsw);
 	mem_limit = mem_cgroup_get_max(memcg);
@@ -43,7 +44,7 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 	else {
 		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit specified\n");
 	}
-	rcu_read_unlock();
+	// rcu_read_unlock();
 	return 0;
 	
 }
