@@ -125,7 +125,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	if (!cfs_b) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
 		ret = -1;
-		goto failed;
+		// goto failed;
 	}
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
