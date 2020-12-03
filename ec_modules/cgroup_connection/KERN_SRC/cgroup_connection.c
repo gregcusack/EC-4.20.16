@@ -138,19 +138,21 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	sockfd 							= cfs_b->ecc->ec_cli;
 
-	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
-
-//	spin_lock(&sock_lock);
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-//	spin_unlock(&sock_lock);
-
-	if(ret) {
-		printk(KERN_INFO "TX failed\n");
-	}
 	kfree(serv_req);
+	return 0;
+// 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-failed:
-	return ret;
+// //	spin_lock(&sock_lock);
+// 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+// //	spin_unlock(&sock_lock);
+
+// 	if(ret) {
+// 		printk(KERN_INFO "TX failed\n");
+// 	}
+// 	kfree(serv_req);
+
+// failed:
+// 	return ret;
 }
 
 unsigned long request_memory(struct mem_cgroup *memcg){
