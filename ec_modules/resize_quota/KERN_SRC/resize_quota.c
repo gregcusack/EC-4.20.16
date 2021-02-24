@@ -23,20 +23,20 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 
 	rcu_read_lock();
 	css_ptr = css_from_id(id, ss);
-	// rcu_read_unlock();
-	if(!css_ptr) {
-		rcu_read_unlock();
+	rcu_read_unlock();
+	if(!css_ptr) { 
+		// rcu_read_unlock();
 		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] css_ptr == NULL.\n");
 		return 1;
 	}
 
 	tg = container_of(css_ptr, struct task_group, css);
 	if(!tg) {
-		rcu_read_unlock();
+		// rcu_read_unlock();
 		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] tg == NULL.\n");
 		return 1;
 	}
-	rcu_read_unlock();
+	// rcu_read_unlock();
 
 	cfs_b = &tg->cfs_bandwidth;
 	if(!cfs_b) {
