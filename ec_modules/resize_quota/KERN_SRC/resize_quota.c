@@ -16,7 +16,8 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 	struct cfs_bandwidth *cfs_b;
 	int ret = 0;
 
-	return cfs_b->quota;
+	return _quota;
+	// return cfs_b->quota;
 
 // 	if(!ss) {
 // 		printk(KERN_ALERT "[RESIZE_QUOTA ERROR] ss == NULL.\n");
