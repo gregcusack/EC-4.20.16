@@ -33,7 +33,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 	struct msghdr msg;
 	struct kvec vec;
-	int len, written = 0, left = length;
+	int len, written = 0, left = length, iter = 0;
 
 	mm_segment_t oldmm;
 	msg.msg_name = 0;
@@ -46,6 +46,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 	set_fs(KERNEL_DS);
 
 	repeat_send:
+		iter++;
 		vec.iov_len = left;
 		vec.iov_base = (char*) buff + written;
 
@@ -53,6 +54,9 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 		//printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
 		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN))) {
 			printk(KERN_ALERT "Error in sending message in Kernel Module\n");
+			if(iter > 10) {
+				return len;
+			}
 			goto repeat_send;
 		}
 
@@ -60,7 +64,10 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 			written += len;
 			left -= len;
 			if(left) {
-				printk(KERN_ALERT "[ERROR]: repeat send!\n");
+				if(iter > 10) {
+					return len;
+				}
+				// printk(KERN_ALERT "[ERROR]: repeat send!\n");
 				goto repeat_send;
 			}
 
@@ -144,7 +151,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	// return 0;
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
 	if(ret) {
 		printk(KERN_INFO "TX failed\n");
@@ -152,8 +159,8 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	kfree(serv_req);
 
 failed:
-	return 0;
-	// return ret;
+	// return 0;
+	return ret;
 }
 
 unsigned long request_memory(struct mem_cgroup *memcg){
