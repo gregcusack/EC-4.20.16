@@ -60,14 +60,10 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 			goto repeat_send;
 		}
 
-		if(unlikely(len > 0)){
+		if(likely(len > 0)){
 			written += len;
 			left -= len;
-			if(left) {
-				if(iter > 10) {
-					return len;
-				}
-				// printk(KERN_ALERT "[ERROR]: repeat send!\n");
+			if(unlikely(left)) {
 				goto repeat_send;
 			}
 
