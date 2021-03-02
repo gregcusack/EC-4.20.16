@@ -52,7 +52,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 
 		len = kernel_sendmsg(sock, &msg, &vec, left, left);
 		//printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
-		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN))) {
+		if(unlikely((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN)))) {
 			printk(KERN_ALERT "Error in sending message in Kernel Module\n");
 			if(iter > 10) {
 				return len;
@@ -60,7 +60,7 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 			goto repeat_send;
 		}
 
-		if(len > 0){
+		if(unlikely(len > 0)){
 			written += len;
 			left -= len;
 			if(left) {
@@ -131,7 +131,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	unsigned long ret;
 	struct socket* sockfd = NULL;
 
-	if (!cfs_b) {
+	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
 		ret = -1;
 		goto failed;
@@ -153,7 +153,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
-	if(ret) {
+	if(unlikely(ret)) {
 		printk(KERN_INFO "TX failed\n");
 	}
 	kfree(serv_req);
