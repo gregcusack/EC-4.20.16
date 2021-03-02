@@ -135,10 +135,10 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	cfs_b->looper++;
 	if(cfs_b->looper % 10 != 0) {
-		printk(KERN_INFO "no\n");
+		// printk(KERN_INFO "no\n");
 		return 0;
 	}
-	printk(KERN_INFO "SENDING!-----------------\n");
+	// printk(KERN_INFO "SENDING!-----------------\n");
 	
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
