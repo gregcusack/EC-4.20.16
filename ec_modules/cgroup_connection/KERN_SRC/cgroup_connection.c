@@ -133,6 +133,14 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 
+	cfs_b->looper++;
+	if(cfs_b->looper % 10 != 0) {
+		printk(KERN_INFO "no\n");
+		return 0;
+	}
+	printk(KERN_INFO "SENDING!-----------------\n");
+	
+
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
 //	serv_req -> request = 1;
@@ -319,7 +327,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	cfs_b->is_ec = 1;
 	cfs_b->parent_tg = tg;
-	cfs_b->gcm_local_runtime = 0;
+	cfs_b->looper = 0;
 	cfs_b->resize_quota = 0;			//TEST
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
