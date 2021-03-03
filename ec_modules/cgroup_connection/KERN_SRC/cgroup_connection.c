@@ -134,7 +134,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	}
 
 	cfs_b->looper++;
-	if(cfs_b->looper % 2 != 0) {
+	if(cfs_b->looper % 4 != 0) {
 		// printk(KERN_INFO "no\n");
 		return 0;
 	}
