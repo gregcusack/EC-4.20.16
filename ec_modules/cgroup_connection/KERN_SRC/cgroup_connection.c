@@ -14,20 +14,74 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 struct ec_connection* _ec_c; // for testing purposes
 EXPORT_SYMBOL(_ec_c);
 
-u32 create_address(u8 *ip)
-{
-        u32 addr = 0;
-        int i;
-
-        for(i=0; i<4; i++)
-        {
-                addr += ip[i];
-                if(i==3)
-                        break;
-                addr <<= 8;
-        }
-        return addr;
+/*
+** This function will be called when we read the sysfs file
+*/
+ssize_t sysfs_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf) {
+	pr_info("Sysfs - Read!!!\n");
+	// return sprintf(buf, "kobj: %s", kobj->entry);
+	return sprintf(buf, "reading...cgId, counter");
+	// return sprintf(buf, "%d,%d", ctr_sysfs_struct.cgId, ctr_sysfs_struct.counter);
+		// return sprintf(buf, "%d,%d", sysfs_rt_stats.cgId, sysfs_rt_stats.quota);
 }
+
+/* 
+** This function will be called when we write the sysfsfs file
+*/
+ssize_t sysfs_store(struct kobject *kobj, struct kobj_attribute *attr,const char *buf, size_t count) {
+	pr_info("Sysfs - Write!!!\n");
+	// sscanf(buf,"%d",&ctr_sysfs_struct);
+	// sysfs_notify(kobj, NULL, "ctr_sysfs_struct");
+	sysfs_notify(kobj, NULL, "sysfs_rt_stats");
+	return count;
+}
+
+/*
+** This function will be called when we open the Device file
+*/ 
+int etx_open(struct inode *inode, struct file *file) {
+	pr_info("Device File Opened...!!!\n");
+	return 0;
+}
+
+/*
+** This function will be called when we close the Device file
+*/ 
+int etx_release(struct inode *inode, struct file *file) {
+	pr_info("Device File Closed...!!!\n");
+	return 0;
+}
+ 
+/*
+** This function will be called when we read the Device file
+*/
+ssize_t etx_read(struct file *filp, char __user *buf, size_t len, loff_t *off) {
+	pr_info("Read function\n");
+	return 0;
+}
+
+/*
+** This function will be called when we write the Device file
+*/
+ssize_t etx_write(struct file *filp, const char __user *buf, size_t len, loff_t *off) {
+	pr_info("Write Function\n");
+	return len;
+}
+
+// u32 create_address(u8 *ip)
+// {
+//         u32 addr = 0;
+//         int i;
+
+//         for(i=0; i<4; i++)
+//         {
+//                 addr += ip[i];
+//                 if(i==3)
+//                         break;
+//                 addr <<= 8;
+//         }
+//         return addr;
+// }
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
@@ -129,11 +183,24 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
-		ret = -1;
-		goto failed;
+		return -1;
+		// ret = -1;
+		// goto failed;
+	}
+	if(!cfs_b->sysfs_rt_stats) {
+		printk(KERN_ERR "[EC ERROR] sysfs_rt_stats struct is NULL!\n");
+		return 0;
 	}
 
 	cfs_b->looper++;
+	// ctr_sysfs_val = cfs_b->looper;
+	// sysfs_notify(kobj_ref, NULL, "ctr_sysfs_val");
+	// ctr_sysfs_struct.cgId = cfs_b->parent_tg->css.id;
+	// ctr_sysfs_struct.counter = cfs_b->looper;
+	cfs_b->sysfs_rt_stats->cgId = cfs_b->parent_tg->css.id;
+	cfs_b->sysfs_rt_stats->quota = cfs_b->looper;
+	// sysfs_notify(kobj_ref, NULL, "ctr_sysfs_struct");
+	sysfs_notify(kobj_ref, NULL, "sysfs_rt_stats");
 	if(cfs_b->looper % 2 != 0) {
 		// printk(KERN_INFO "no\n");
 		return 0;
@@ -143,7 +210,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
-//	serv_req -> request = 1;
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
@@ -151,20 +217,21 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	sockfd 							= cfs_b->ecc->ec_cli;
 
-	// kfree(serv_req);
+	kfree(serv_req);
 	// return 0;
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	return 0;
+// 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 
-	if(unlikely(ret)) {
-		printk(KERN_INFO "TX failed\n");
-	}
-	kfree(serv_req);
+// 	if(unlikely(ret)) {
+// 		printk(KERN_INFO "TX failed\n");
+// 	}
+// 	kfree(serv_req);
 
-failed:
-	// return 0;
-	return ret;
+// failed:
+// 	// return 0;
+// 	return ret;
 }
 
 unsigned long request_memory(struct mem_cgroup *memcg){
@@ -271,6 +338,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	ec_message_t *init_msg_req, *init_msg_res;
 	int ret, recv;
+	struct sysfs_rt_stats_t *rt_stats;
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_port, pid, agent_ip);
 
@@ -336,6 +404,21 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	_ec_c -> ec_cli 						= sockfd_cli;
 	cfs_b -> ecc 							= _ec_c;
 
+	rt_stats = (struct sysfs_rt_stats_t*)kmalloc(sizeof(struct sysfs_rt_stats_t), GFP_KERNEL);
+	rt_stats -> cgId = tg->css.id;
+	rt_stats -> quota = 0;
+	rt_stats -> nr_throttled = 0;
+	rt_stats -> rt_remaining = 0;
+	rt_stats -> req_type = 0;
+
+	rt_stats -> sysfs_show 		= &sysfs_show;
+	rt_stats -> sysfs_store 	= &sysfs_store;
+	rt_stats -> etx_open 		= &etx_open;
+	rt_stats -> etx_release 	= &etx_release;
+	rt_stats -> etx_read 		= &etx_read;
+	rt_stats -> etx_write 		= &etx_write;
+	cfs_b -> sysfs_rt_stats 	= rt_stats;
+
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
 		return __BADARG;
@@ -395,10 +478,66 @@ static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
+		/*Allocating Major number*/
+	if((alloc_chrdev_region(&dev, 0, 1, "etx_Dev")) <0){
+			pr_info("Cannot allocate major number\n");
+			return -1;
+	}
+	pr_info("Major = %d Minor = %d \n",MAJOR(dev), MINOR(dev));
+
+	/*Creating cdev structure*/
+	cdev_init(&etx_cdev,&fops);
+
+	/*Adding character device to the system*/
+	if((cdev_add(&etx_cdev,dev,1)) < 0){
+		pr_info("Cannot add the device to the system\n");
+		goto r_class;
+	}
+
+	/*Creating struct class*/
+	if((dev_class = class_create(THIS_MODULE,"etx_class")) == NULL){
+		pr_info("Cannot create the struct class\n");
+		goto r_class;
+	}
+
+	/*Creating device*/
+	if((device_create(dev_class,NULL,dev,NULL,"etx_device")) == NULL){
+		pr_info("Cannot create the Device 1\n");
+		goto r_device;
+	}
+
+	/*Creating a directory in /sys/kernel/ */
+	// kobj_ref = kobject_create_and_add("ctr_sysfs",kernel_kobj);
+	kobj_ref = kobject_create_and_add("rt_stats_sysfs",kernel_kobj);
+
+	/*Creating sysfs file for etx_value*/
+	if(sysfs_create_file(kobj_ref,&etx_attr.attr)){
+			pr_err("Cannot create sysfs file......\n");
+			goto r_sysfs;
+	}
+	
+	printk(KERN_INFO "[Distributed Container Log] Sysfs kernel module initialized!\n");
 	return 0;
+
+r_sysfs:
+	kobject_put(kobj_ref); 
+	sysfs_remove_file(kernel_kobj, &etx_attr.attr);
+ 
+r_device:
+	class_destroy(dev_class);
+r_class:
+	unregister_chrdev_region(dev,1);
+	cdev_del(&etx_cdev);
+	return -1;
 }
 
 static void __exit ec_connection_exit(void){
+	kobject_put(kobj_ref); 
+	sysfs_remove_file(kernel_kobj, &etx_attr.attr);
+	device_destroy(dev_class,dev);
+	class_destroy(dev_class);
+	cdev_del(&etx_cdev);
+	unregister_chrdev_region(dev, 1);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module has been removed!\n");
 }
 

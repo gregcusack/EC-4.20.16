@@ -23,12 +23,61 @@
 #include<asm/uaccess.h>
 #include<linux/in.h>
 #include<ec/ec_connection.h>
+#include <ec/sysfs_rt_stats.h>
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
+
+typedef struct {
+	int cgId;
+	int counter;
+} ctr_sysfs_struct_t;
+
+ctr_sysfs_struct_t ctr_sysfs_struct = {
+	.cgId = 0,
+	.counter = 0
+};
+
+// volatile int ctr_sysfs_val = 0;
+
+dev_t dev = 0;
+static struct class *dev_class;
+static struct cdev etx_cdev;
+struct kobject *kobj_ref;
+
+
+/*************** Driver functions **********************/
+static int      etx_open(struct inode *inode, struct file *file);
+static int      etx_release(struct inode *inode, struct file *file);
+static ssize_t  etx_read(struct file *filp, 
+                        char __user *buf, size_t len,loff_t * off);
+static ssize_t  etx_write(struct file *filp, 
+                        const char *buf, size_t len, loff_t * off);
+ 
+/*************** Sysfs functions **********************/
+static ssize_t  sysfs_show(struct kobject *kobj, 
+                        struct kobj_attribute *attr, char *buf);
+static ssize_t  sysfs_store(struct kobject *kobj, 
+                        struct kobj_attribute *attr,const char *buf, size_t count);
+
+// struct kobj_attribute etx_attr = __ATTR(ctr_sysfs_val, 0660, sysfs_show, sysfs_store);
+// struct kobj_attribute etx_attr = __ATTR(ctr_sysfs_struct, 0660, sysfs_show, sysfs_store);
+struct kobj_attribute etx_attr = __ATTR(sysfs_rt_stats, 0660, sysfs_show, sysfs_store);
+
+/*
+** File operation sturcture
+*/
+static struct file_operations fops =
+{
+        .owner          = THIS_MODULE,
+        .read           = etx_read,
+        .write          = etx_write,
+        .open           = etx_open,
+        .release        = etx_release,
+};
 
 #ifndef likely
 #define likely(x)       __builtin_expect((x),1)

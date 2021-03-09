@@ -67,6 +67,7 @@
 
 /* EC */
 #include <ec/ec_connection.h>
+#include <ec/sysfs_rt_stats.h>
 
 #include <asm/tlb.h>
 
@@ -359,6 +360,7 @@ struct cfs_bandwidth {
 	int 					is_ec; //0=not an EC, 1=is an EC
 	struct task_group 	*parent_tg;
 	u64 looper;
+	struct sysfs_rt_stats_t 	*sysfs_rt_stats;
 	short resize_quota;
 
 #endif
