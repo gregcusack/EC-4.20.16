@@ -70,8 +70,7 @@ struct kobj_attribute etx_attr = __ATTR(sysfs_rt_stats, 0660, sysfs_show, sysfs_
 /*
 ** File operation sturcture
 */
-static struct file_operations fops =
-{
+static struct file_operations fops = {
         .owner          = THIS_MODULE,
         .read           = etx_read,
         .write          = etx_write,
