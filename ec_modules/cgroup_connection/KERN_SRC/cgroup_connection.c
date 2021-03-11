@@ -157,6 +157,36 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	return len;//len == length ? 0:len;
 }
 
+int udp_send(struct socket* sock, const char* buff, const size_t length){
+
+	struct sockaddr_in raddr = {
+		.sin_family	= AF_INET,
+		.sin_port	= htons(CONTROLLER_PORT),
+		.sin_addr	= { htonl(CONTROLLER_IP) }
+	};
+
+	int raddrlen = sizeof(raddr);
+
+	struct msghdr msg;
+	struct iovec iov;
+	int len, iter = 0;
+	len = strlen(buff) + 1;
+
+	iov.iov_base = buff;
+	iov.iov_len = len;
+	msg.msg_flags = 0;
+	msg.msg_name = &raddr;
+	msg.msg_namelen = raddrlen;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+
+	len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
+	if(len < length) {
+		printk(KERN_ALERT "Failed to send full msg on udp sock!\n");
+	}
+	return 0;
+}
+
 uint64_t bytes_to_ull(char *bytes) {
 	return *((uint64_t*)bytes);
 }
@@ -192,19 +222,19 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		return 0;
 	}
 
-	cfs_b->looper++;
-	// ctr_sysfs_val = cfs_b->looper;
-	// sysfs_notify(kobj_ref, NULL, "ctr_sysfs_val");
-	// ctr_sysfs_struct.cgId = cfs_b->parent_tg->css.id;
-	// ctr_sysfs_struct.counter = cfs_b->looper;
-	cfs_b->sysfs_rt_stats->cgId = cfs_b->parent_tg->css.id;
-	cfs_b->sysfs_rt_stats->quota = cfs_b->looper;
-	// sysfs_notify(kobj_ref, NULL, "ctr_sysfs_struct");
-	sysfs_notify(kobj_ref, NULL, "sysfs_rt_stats");
-	if(cfs_b->looper % 2 != 0) {
-		// printk(KERN_INFO "no\n");
-		return 0;
-	}
+	// cfs_b->looper++;
+	// // ctr_sysfs_val = cfs_b->looper;
+	// // sysfs_notify(kobj_ref, NULL, "ctr_sysfs_val");
+	// // ctr_sysfs_struct.cgId = cfs_b->parent_tg->css.id;
+	// // ctr_sysfs_struct.counter = cfs_b->looper;
+	// cfs_b->sysfs_rt_stats->cgId = cfs_b->parent_tg->css.id;
+	// cfs_b->sysfs_rt_stats->quota = cfs_b->looper;
+	// // sysfs_notify(kobj_ref, NULL, "ctr_sysfs_struct");
+	// sysfs_notify(kobj_ref, NULL, "sysfs_rt_stats");
+	// if(cfs_b->looper % 2 != 0) {
+	// 	// printk(KERN_INFO "no\n");
+	// 	return 0;
+	// }
 	// printk(KERN_INFO "SENDING!-----------------\n");
 	
 
@@ -221,8 +251,8 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	// return 0;
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	return 0;
-// 	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
 // 	if(unlikely(ret)) {
 // 		printk(KERN_INFO "TX failed\n");
@@ -348,6 +378,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
 		return __BADARG;
 	}
+	CONTROLLER_IP = GCM_ip;
+	CONTROLLER_PORT = GCM_port;
 
 	task_in_cg_pid = find_get_pid(pid);
 	if(!task_in_cg_pid)
@@ -370,7 +402,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	// printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
 
 	ret = -1;
-	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
+	ret = sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockfd_cli);
 	if(ret < 0){
 		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
 		return ret;
@@ -379,13 +411,14 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 	memset(&saddr, 0, sizeof(saddr));
 
 	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(GCM_port);
-	saddr.sin_addr.s_addr = htonl(GCM_ip);
+	saddr.sin_port = htons(CONTROLLER_PORT);
+	saddr.sin_addr.s_addr = htonl(CONTROLLER_IP);
 
-	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
+	// ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
+	ret = sockfd_cli -> ops -> bind(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr));
 
-	if(ret && (ret != -EINPROGRESS)){
-		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
+	if(ret < 0){
+		printk(KERN_ALERT"[ERROR]can't bind socket\n");
 		return ret;
 	}
 

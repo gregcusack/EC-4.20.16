@@ -41,6 +41,9 @@ ctr_sysfs_struct_t ctr_sysfs_struct = {
 	.counter = 0
 };
 
+unsigned int CONTROLLER_IP;
+int CONTROLLER_PORT;
+
 // volatile int ctr_sysfs_val = 0;
 
 dev_t dev = 0;
