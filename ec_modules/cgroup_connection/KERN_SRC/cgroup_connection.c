@@ -14,59 +14,9 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 struct ec_connection* _ec_c; // for testing purposes
 EXPORT_SYMBOL(_ec_c);
 
-/*
-** This function will be called when we read the sysfs file
-*/
-ssize_t sysfs_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf) {
-	pr_info("Sysfs - Read!!!\n");
-	// return sprintf(buf, "kobj: %s", kobj->entry);
-	return sprintf(buf, "reading...cgId, counter");
-	// return sprintf(buf, "%d,%d", ctr_sysfs_struct.cgId, ctr_sysfs_struct.counter);
-		// return sprintf(buf, "%d,%d", sysfs_rt_stats.cgId, sysfs_rt_stats.quota);
-}
-
-/* 
-** This function will be called when we write the sysfsfs file
-*/
-ssize_t sysfs_store(struct kobject *kobj, struct kobj_attribute *attr,const char *buf, size_t count) {
-	pr_info("Sysfs - Write!!!\n");
-	// sscanf(buf,"%d",&ctr_sysfs_struct);
-	// sysfs_notify(kobj, NULL, "ctr_sysfs_struct");
-	sysfs_notify(kobj, NULL, "sysfs_rt_stats");
-	return count;
-}
-
-/*
-** This function will be called when we open the Device file
-*/ 
-int etx_open(struct inode *inode, struct file *file) {
-	pr_info("Device File Opened...!!!\n");
-	return 0;
-}
-
-/*
-** This function will be called when we close the Device file
-*/ 
-int etx_release(struct inode *inode, struct file *file) {
-	pr_info("Device File Closed...!!!\n");
-	return 0;
-}
- 
-/*
-** This function will be called when we read the Device file
-*/
-ssize_t etx_read(struct file *filp, char __user *buf, size_t len, loff_t *off) {
-	pr_info("Read function\n");
-	return 0;
-}
-
-/*
-** This function will be called when we write the Device file
-*/
-ssize_t etx_write(struct file *filp, const char __user *buf, size_t len, loff_t *off) {
-	pr_info("Write Function\n");
-	return len;
-}
+int CONTROLLER_UDP_PORT;
+int CONTROLLER_IP;
+int HOST_IP;
 
 // u32 create_address(u8 *ip)
 // {
@@ -161,30 +111,59 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 
 	struct sockaddr_in raddr = {
 		.sin_family	= AF_INET,
-		.sin_port	= htons(CONTROLLER_PORT),
+		.sin_port	= htons(CONTROLLER_UDP_PORT),
 		.sin_addr	= { htonl(CONTROLLER_IP) }
 	};
 
 	int raddrlen = sizeof(raddr);
 
 	struct msghdr msg;
-	struct iovec iov;
-	int len, iter = 0;
-	len = strlen(buff) + 1;
+	// struct iovec iov;
+	// int len;
+	// len = strlen(buff) + 1;
 
-	iov.iov_base = buff;
-	iov.iov_len = len;
+	// iov.iov_base = buff;
+	// iov.iov_len = len;
 	msg.msg_flags = 0;
 	msg.msg_name = &raddr;
 	msg.msg_namelen = raddrlen;
 	msg.msg_control = NULL;
 	msg.msg_controllen = 0;
 
-	len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
-	if(len < length) {
-		printk(KERN_ALERT "Failed to send full msg on udp sock!\n");
-	}
-	return 0;
+	// len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
+	// if(len < length) {
+	// 	printk(KERN_ALERT "Failed to send full msg on udp sock! len: %d, length: %d\n", len, length);
+	// }
+	// return 0;
+
+	struct kvec vec;
+	int sent, size_pkt, totbytes = 0;
+	long long buffer_size = length;
+	char * buf = (char *) buff;
+
+	mm_segment_t oldmm;
+
+  	while(buffer_size > 0){
+		// if(buffer_size < MAX_UDP_SIZE) {
+		size_pkt = buffer_size;
+		// }
+		// else {
+		// 	size_pkt = MAX_UDP_SIZE;
+		// }
+
+		vec.iov_len = size_pkt;
+		vec.iov_base = buf;
+
+		buffer_size -= size_pkt;
+		buf += size_pkt;
+
+		oldmm = get_fs(); set_fs(KERNEL_DS);
+		sent = kernel_sendmsg(sock, &msg, &vec, 1, size_pkt);
+		set_fs(oldmm);
+
+		totbytes+=sent;
+  	}
+	return totbytes == length ? 0 : totbytes;
 }
 
 uint64_t bytes_to_ull(char *bytes) {
@@ -213,55 +192,37 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
-		return -1;
-		// ret = -1;
-		// goto failed;
+		// return -1;
+		ret = -1;
+		goto failed;
 	}
-	if(!cfs_b->sysfs_rt_stats) {
-		printk(KERN_ERR "[EC ERROR] sysfs_rt_stats struct is NULL!\n");
-		return 0;
-	}
-
-	// cfs_b->looper++;
-	// // ctr_sysfs_val = cfs_b->looper;
-	// // sysfs_notify(kobj_ref, NULL, "ctr_sysfs_val");
-	// // ctr_sysfs_struct.cgId = cfs_b->parent_tg->css.id;
-	// // ctr_sysfs_struct.counter = cfs_b->looper;
-	// cfs_b->sysfs_rt_stats->cgId = cfs_b->parent_tg->css.id;
-	// cfs_b->sysfs_rt_stats->quota = cfs_b->looper;
-	// // sysfs_notify(kobj_ref, NULL, "ctr_sysfs_struct");
-	// sysfs_notify(kobj_ref, NULL, "sysfs_rt_stats");
-	// if(cfs_b->looper % 2 != 0) {
-	// 	// printk(KERN_INFO "no\n");
-	// 	return 0;
-	// }
-	// printk(KERN_INFO "SENDING!-----------------\n");
-	
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
+	serv_req -> client_ip			= HOST_IP;
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
 	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
-	sockfd 							= cfs_b->ecc->ec_cli;
+	// sockfd 							= cfs_b->ecc->ec_cli;
+	sockfd 							= cfs_b->ecc->ec_udp;
 
-	kfree(serv_req);
+	// kfree(serv_req);
 	// return 0;
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
 	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
 	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
-// 	if(unlikely(ret)) {
-// 		printk(KERN_INFO "TX failed\n");
-// 	}
-// 	kfree(serv_req);
+	if(unlikely(ret)) {
+		printk(KERN_INFO "TX failed\n");
+	}
+	kfree(serv_req);
 
-// failed:
-// 	// return 0;
-// 	return ret;
+failed:
+	// return 0;
+	return ret;
 }
 
 unsigned long request_memory(struct mem_cgroup *memcg){
@@ -273,15 +234,15 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 
 	printk(KERN_INFO "in request_memory(): cg_id: %d\n", memcg->id.id);
 
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+
 	if(!memcg) {
 		printk(KERN_ERR "[EC ERROR] request_memory(): memcg == NULL...idk what to do\n");
 		ret = 0;
 		to_return = 0;
 		goto failed;
 	}
-
-	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
 	//unsigned long new_max;
 	serv_req -> client_ip 			= 2130706433;
@@ -354,32 +315,30 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip) {
+int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid, unsigned int agent_ip) {
 
 	struct socket *sockfd_cli = NULL;
-	struct sockaddr_in saddr;
+	struct socket *sockfd_udp = NULL;
+	struct sockaddr_in saddr, saddr_udp;
 
 	struct pid *task_in_cg_pid; //pid data structure for task in cgroup
 	struct task_struct *tsk_in_cg; //task_struct for the task in cgroup
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
-	struct cgroup_subsys *ss = &cpu_cgrp_subsys;
+	// struct cgroup_subsys *ss = &cpu_cgrp_subsys;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, recv;
-	struct sysfs_rt_stats_t *rt_stats;
+	int ret, ret_udp, recv;
 
-	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_port, pid, agent_ip);
+	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
 	// We first check whether the server is running and we can send a request to it prior to 
 	// indicating the container as "elastic"
-	if(!GCM_ip || !GCM_port) {
+	if(!GCM_ip || !GCM_tcp_port || !GCM_udp_port) {
 		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
 		return __BADARG;
 	}
-	CONTROLLER_IP = GCM_ip;
-	CONTROLLER_PORT = GCM_port;
 
 	task_in_cg_pid = find_get_pid(pid);
 	if(!task_in_cg_pid)
@@ -399,28 +358,56 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT "cfs_b error!\n");
 		return __BADARG;
 	}
-	// printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
 
+	CONTROLLER_IP = GCM_ip;
+	CONTROLLER_UDP_PORT = GCM_udp_port;
+	HOST_IP = agent_ip;
+
+////////////
+
+	/* UDP Below */
+	ret_udp = -1;
+	ret_udp = sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockfd_udp);
+	if(ret_udp < 0){
+		printk(KERN_ALERT"[ERROR] UDP Socket creation failed!\n");
+		return ret_udp;
+	}
+
+	memset(&saddr_udp, 0, sizeof(saddr_udp));
+
+	saddr_udp.sin_family = AF_INET;
+	saddr_udp.sin_port = htons(GCM_udp_port);
+	saddr_udp.sin_addr.s_addr = htonl(GCM_ip);
+
+	// ret_udp = sockfd_udp -> ops -> bind(sockfd_udp, (struct sockaddr*) &saddr_udp, sizeof(saddr_udp));
+
+	// if(ret_udp < 0){
+	// 	printk(KERN_ALERT"[ERROR]can't bind udp socket: ret: %d\n", ret_udp);
+	// 	return ret_udp;
+	// }
+
+	/* TCP BELOW */
 	ret = -1;
-	ret = sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockfd_cli);
+	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	if(ret < 0){
-		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
+		printk(KERN_ALERT"[ERROR] TCP Socket creation failed!\n");
 		return ret;
 	}
 
 	memset(&saddr, 0, sizeof(saddr));
 
 	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(CONTROLLER_PORT);
-	saddr.sin_addr.s_addr = htonl(CONTROLLER_IP);
+	saddr.sin_port = htons(GCM_tcp_port);
+	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
-	// ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
-	ret = sockfd_cli -> ops -> bind(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr));
+	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
 
-	if(ret < 0){
-		printk(KERN_ALERT"[ERROR]can't bind socket\n");
+	if(ret && (ret != -EINPROGRESS)){
+		printk(KERN_ALERT"[ERROR] Server TCP connection failed!\n");
 		return ret;
 	}
+
+//////////
 
 	if(cfs_b->is_ec != 0) {
 		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
@@ -428,29 +415,14 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	cfs_b->is_ec = 1;
 	cfs_b->parent_tg = tg;
-	cfs_b->looper = 0;
 	cfs_b->resize_quota = 0;			//TEST
 		
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;
 	_ec_c -> ec_cli 						= sockfd_cli;
+	_ec_c -> ec_udp							= sockfd_udp;
 	cfs_b -> ecc 							= _ec_c;
-
-	rt_stats = (struct sysfs_rt_stats_t*)kmalloc(sizeof(struct sysfs_rt_stats_t), GFP_KERNEL);
-	rt_stats -> cgId = tg->css.id;
-	rt_stats -> quota = 0;
-	rt_stats -> nr_throttled = 0;
-	rt_stats -> rt_remaining = 0;
-	rt_stats -> req_type = 0;
-
-	rt_stats -> sysfs_show 		= &sysfs_show;
-	rt_stats -> sysfs_store 	= &sysfs_store;
-	rt_stats -> etx_open 		= &etx_open;
-	rt_stats -> etx_release 	= &etx_release;
-	rt_stats -> etx_read 		= &etx_read;
-	rt_stats -> etx_write 		= &etx_write;
-	cfs_b -> sysfs_rt_stats 	= rt_stats;
 
 	if(!cfs_b->ecc) {
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
@@ -511,66 +483,10 @@ static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
-		/*Allocating Major number*/
-	if((alloc_chrdev_region(&dev, 0, 1, "etx_Dev")) <0){
-			pr_info("Cannot allocate major number\n");
-			return -1;
-	}
-	pr_info("Major = %d Minor = %d \n",MAJOR(dev), MINOR(dev));
-
-	/*Creating cdev structure*/
-	cdev_init(&etx_cdev,&fops);
-
-	/*Adding character device to the system*/
-	if((cdev_add(&etx_cdev,dev,1)) < 0){
-		pr_info("Cannot add the device to the system\n");
-		goto r_class;
-	}
-
-	/*Creating struct class*/
-	if((dev_class = class_create(THIS_MODULE,"etx_class")) == NULL){
-		pr_info("Cannot create the struct class\n");
-		goto r_class;
-	}
-
-	/*Creating device*/
-	if((device_create(dev_class,NULL,dev,NULL,"etx_device")) == NULL){
-		pr_info("Cannot create the Device 1\n");
-		goto r_device;
-	}
-
-	/*Creating a directory in /sys/kernel/ */
-	// kobj_ref = kobject_create_and_add("ctr_sysfs",kernel_kobj);
-	kobj_ref = kobject_create_and_add("rt_stats_sysfs",kernel_kobj);
-
-	/*Creating sysfs file for etx_value*/
-	if(sysfs_create_file(kobj_ref,&etx_attr.attr)){
-			pr_err("Cannot create sysfs file......\n");
-			goto r_sysfs;
-	}
-	
-	printk(KERN_INFO "[Distributed Container Log] Sysfs kernel module initialized!\n");
 	return 0;
-
-r_sysfs:
-	kobject_put(kobj_ref); 
-	sysfs_remove_file(kernel_kobj, &etx_attr.attr);
- 
-r_device:
-	class_destroy(dev_class);
-r_class:
-	unregister_chrdev_region(dev,1);
-	cdev_del(&etx_cdev);
-	return -1;
 }
 
 static void __exit ec_connection_exit(void){
-	kobject_put(kobj_ref); 
-	sysfs_remove_file(kernel_kobj, &etx_attr.attr);
-	device_destroy(dev_class,dev);
-	class_destroy(dev_class);
-	cdev_del(&etx_cdev);
-	unregister_chrdev_region(dev, 1);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module has been removed!\n");
 }
 
