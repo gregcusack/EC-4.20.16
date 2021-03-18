@@ -52,6 +52,7 @@ typedef struct ec_msg {
 	uint64_t rsrc_amnt;
 	uint32_t request;
 	uint64_t runtime_remaining;
+	uint64_t seq_num;
 
 } ec_message_t;
 

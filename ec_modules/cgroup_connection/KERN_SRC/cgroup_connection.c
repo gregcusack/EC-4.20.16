@@ -197,6 +197,8 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 
+	cfs_b->seq_num++;
+
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
 	serv_req -> client_ip			= HOST_IP;
@@ -205,6 +207,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
 	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
+	serv_req -> seq_num				= cfs_b->seq_num;
 	// sockfd 							= cfs_b->ecc->ec_cli;
 	sockfd 							= cfs_b->ecc->ec_udp;
 
@@ -416,7 +419,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	cfs_b->is_ec = 1;
 	cfs_b->parent_tg = tg;
 	cfs_b->resize_quota = 0;			//TEST
-		
+	cfs_b -> seq_num	= 0;
+
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;

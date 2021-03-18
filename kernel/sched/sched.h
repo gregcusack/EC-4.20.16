@@ -360,6 +360,7 @@ struct cfs_bandwidth {
 	int 					is_ec; //0=not an EC, 1=is an EC
 	struct task_group 	*parent_tg;
 	short resize_quota;
+	u64 seq_num;
 
 #endif
 };
