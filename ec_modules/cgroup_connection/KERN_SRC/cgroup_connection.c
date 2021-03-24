@@ -14,26 +14,30 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 struct ec_connection* _ec_c; // for testing purposes
 EXPORT_SYMBOL(_ec_c);
 
-u32 create_address(u8 *ip)
-{
-        u32 addr = 0;
-        int i;
+int CONTROLLER_UDP_PORT;
+int CONTROLLER_IP;
+int HOST_IP;
 
-        for(i=0; i<4; i++)
-        {
-                addr += ip[i];
-                if(i==3)
-                        break;
-                addr <<= 8;
-        }
-        return addr;
-}
+// u32 create_address(u8 *ip)
+// {
+//         u32 addr = 0;
+//         int i;
+
+//         for(i=0; i<4; i++)
+//         {
+//                 addr += ip[i];
+//                 if(i==3)
+//                         break;
+//                 addr <<= 8;
+//         }
+//         return addr;
+// }
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
 	struct msghdr msg;
 	struct kvec vec;
-	int len, written = 0, left = length;
+	int len, written = 0, left = length, iter = 0;
 
 	mm_segment_t oldmm;
 	msg.msg_name = 0;
@@ -46,21 +50,26 @@ int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigne
 	set_fs(KERNEL_DS);
 
 	repeat_send:
+		iter++;
 		vec.iov_len = left;
 		vec.iov_base = (char*) buff + written;
 
 		len = kernel_sendmsg(sock, &msg, &vec, left, left);
 		//printk(KERN_ALERT "[EC DEBUG] Send Message Length: %d\n", len);
-		if((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN))) {
+		if(unlikely((len == -ERESTARTSYS) || (!(flags && MSG_DONTWAIT)&&(len == -EAGAIN)))) {
 			printk(KERN_ALERT "Error in sending message in Kernel Module\n");
+			if(iter > 10) {
+				return len;
+			}
 			goto repeat_send;
 		}
 
-		if(len > 0){
+		if(likely(len > 0)){
 			written += len;
 			left -= len;
-			if(left)
+			if(unlikely(left)) {
 				goto repeat_send;
+			}
 
 		}
 	set_fs(oldmm);
@@ -98,6 +107,65 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	return len;//len == length ? 0:len;
 }
 
+int udp_send(struct socket* sock, const char* buff, const size_t length){
+
+	struct sockaddr_in raddr = {
+		.sin_family	= AF_INET,
+		.sin_port	= htons(CONTROLLER_UDP_PORT),
+		.sin_addr	= { htonl(CONTROLLER_IP) }
+	};
+
+	int raddrlen = sizeof(raddr);
+
+	struct msghdr msg;
+	// struct iovec iov;
+	// int len;
+	// len = strlen(buff) + 1;
+
+	// iov.iov_base = buff;
+	// iov.iov_len = len;
+	msg.msg_flags = 0;
+	msg.msg_name = &raddr;
+	msg.msg_namelen = raddrlen;
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+
+	// len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
+	// if(len < length) {
+	// 	printk(KERN_ALERT "Failed to send full msg on udp sock! len: %d, length: %d\n", len, length);
+	// }
+	// return 0;
+
+	struct kvec vec;
+	int sent, size_pkt, totbytes = 0;
+	long long buffer_size = length;
+	char * buf = (char *) buff;
+
+	mm_segment_t oldmm;
+
+  	while(buffer_size > 0){
+		// if(buffer_size < MAX_UDP_SIZE) {
+		size_pkt = buffer_size;
+		// }
+		// else {
+		// 	size_pkt = MAX_UDP_SIZE;
+		// }
+
+		vec.iov_len = size_pkt;
+		vec.iov_base = buf;
+
+		buffer_size -= size_pkt;
+		buf += size_pkt;
+
+		oldmm = get_fs(); set_fs(KERNEL_DS);
+		sent = kernel_sendmsg(sock, &msg, &vec, 1, size_pkt);
+		set_fs(oldmm);
+
+		totbytes+=sent;
+  	}
+	return totbytes == length ? 0 : totbytes;
+}
+
 uint64_t bytes_to_ull(char *bytes) {
 	return *((uint64_t*)bytes);
 }
@@ -122,29 +190,33 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	unsigned long ret;
 	struct socket* sockfd = NULL;
 
-	if (!cfs_b) {
+	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
+		// return -1;
 		ret = -1;
 		goto failed;
 	}
 
+	cfs_b->seq_num++;
+
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
-//	serv_req -> request = 1;
+	serv_req -> client_ip			= HOST_IP;
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
 	serv_req -> rsrc_amnt 			= cfs_b->quota;
 	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
-	sockfd 							= cfs_b->ecc->ec_cli;
+	serv_req -> seq_num				= cfs_b->seq_num;
+	// sockfd 							= cfs_b->ecc->ec_cli;
+	sockfd 							= cfs_b->ecc->ec_udp;
 
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-//	spin_lock(&sock_lock);
-	ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-//	spin_unlock(&sock_lock);
+	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
+	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
-	if(ret) {
+	if(unlikely(ret)) {
 		printk(KERN_INFO "TX failed\n");
 	}
 	kfree(serv_req);
@@ -162,15 +234,15 @@ unsigned long request_memory(struct mem_cgroup *memcg){
 
 	printk(KERN_INFO "in request_memory(): cg_id: %d\n", memcg->id.id);
 
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+
 	if(!memcg) {
 		printk(KERN_ERR "[EC ERROR] request_memory(): memcg == NULL...idk what to do\n");
 		ret = 0;
 		to_return = 0;
 		goto failed;
 	}
-
-	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-	serv_res = (ec_message_t*)kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
 	//unsigned long new_max;
 	serv_req -> client_ip 			= 2130706433;
@@ -243,26 +315,26 @@ int validate_init(ec_message_t *init_msg_req, ec_message_t *init_msg_res) {
 
 }
 
-int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip) {
+int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid, unsigned int agent_ip) {
 
 	struct socket *sockfd_cli = NULL;
-	struct sockaddr_in saddr;
+	struct socket *sockfd_udp = NULL;
+	struct sockaddr_in saddr, saddr_udp;
 
 	struct pid *task_in_cg_pid; //pid data structure for task in cgroup
 	struct task_struct *tsk_in_cg; //task_struct for the task in cgroup
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
-	struct cgroup_subsys *ss = &cpu_cgrp_subsys;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, recv;
+	int ret, ret_udp, recv;
 
-	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_port, pid, agent_ip);
+	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
 	// We first check whether the server is running and we can send a request to it prior to 
 	// indicating the container as "elastic"
-	if(!GCM_ip || !GCM_port) {
+	if(!GCM_ip || !GCM_tcp_port || !GCM_udp_port) {
 		printk(KERN_ALERT"[ERROR] GCM IP or Port is incorrect!\n");
 		return __BADARG;
 	}
@@ -285,27 +357,49 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 		printk(KERN_ALERT "cfs_b error!\n");
 		return __BADARG;
 	}
-	// printk(KERN_ALERT"[dbg]we were able to get cfs_b of the container!\n");
 
+	CONTROLLER_IP = GCM_ip;
+	CONTROLLER_UDP_PORT = GCM_udp_port;
+	HOST_IP = agent_ip;
+
+////////////
+
+	/* UDP Below */
+	ret_udp = -1;
+	ret_udp = sock_create_kern(&init_net, PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sockfd_udp);
+	if(ret_udp < 0){
+		printk(KERN_ALERT"[ERROR] UDP Socket creation failed!\n");
+		return ret_udp;
+	}
+
+	memset(&saddr_udp, 0, sizeof(saddr_udp));
+
+	saddr_udp.sin_family = AF_INET;
+	saddr_udp.sin_port = htons(GCM_udp_port);
+	saddr_udp.sin_addr.s_addr = htonl(GCM_ip);
+
+	/* TCP BELOW */
 	ret = -1;
 	ret = sock_create_kern(&init_net, PF_INET, SOCK_STREAM, IPPROTO_TCP, &sockfd_cli);
 	if(ret < 0){
-		printk(KERN_ALERT"[ERROR] Socket creation failed!\n");
+		printk(KERN_ALERT"[ERROR] TCP Socket creation failed!\n");
 		return ret;
 	}
 
 	memset(&saddr, 0, sizeof(saddr));
 
 	saddr.sin_family = AF_INET;
-	saddr.sin_port = htons(GCM_port);
+	saddr.sin_port = htons(GCM_tcp_port);
 	saddr.sin_addr.s_addr = htonl(GCM_ip);
 
 	ret = sockfd_cli -> ops -> connect(sockfd_cli, (struct sockaddr*) &saddr, sizeof(saddr), O_RDWR|O_NONBLOCK);
 
 	if(ret && (ret != -EINPROGRESS)){
-		printk(KERN_ALERT"[ERROR] Server connection failed!\n");
+		printk(KERN_ALERT"[ERROR] Server TCP connection failed!\n");
 		return ret;
 	}
+
+//////////
 
 	if(cfs_b->is_ec != 0) {
 		printk(KERN_ALERT "ERROR cfs_b->is_ec is not 0 ahhh: %d\n", cfs_b->is_ec);
@@ -313,13 +407,14 @@ int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip
 
 	cfs_b->is_ec = 1;
 	cfs_b->parent_tg = tg;
-	cfs_b->gcm_local_runtime = 0;
 	cfs_b->resize_quota = 0;			//TEST
-		
+	cfs_b -> seq_num	= 0;
+
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;
 	_ec_c -> ec_cli 						= sockfd_cli;
+	_ec_c -> ec_udp							= sockfd_udp;
 	cfs_b -> ecc 							= _ec_c;
 
 	if(!cfs_b->ecc) {

@@ -30,8 +30,12 @@ struct ec_connection {
 
 	struct socket* ec_cli;
 
+	struct socket *ec_udp;
+
 };
 
-extern int (*ec_connect_)(unsigned int, int, int, unsigned int);
+// extern int (*ec_connect_)(unsigned int, int, int, unsigned int);
+extern int (*ec_connect_)(unsigned int, int, int, int, unsigned int);
+
 
 #endif /* EC_CONNECTION_H_ */

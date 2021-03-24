@@ -4319,17 +4319,6 @@ static int assign_cfs_rq_runtime(struct cfs_rq *cfs_rq)
 			cfs_b->runtime -= amount;
 			cfs_b->idle = 0;
 		}
-//		/* EC */
-//		else if(cfs_b->is_ec && cfs_b->gcm_local_runtime > 0) { //if cfs_b->runtime <= 0 && is an EC && gcm_local_runtime > 0
-//			printk(KERN_INFO "get slice\n");
-//			amount = min(cfs_b->gcm_local_runtime, sched_cfs_bandwidth_slice());
-//			cfs_b->gcm_local_runtime -= amount;
-//			cfs_b->idle = 0;
-//		}
-//		else if(cfs_b->is_ec) {
-//			printk(KERN_INFO "no slices left. throttle\n");
-//		}
-
 	}
 	expires_seq = cfs_b->expires_seq;
 	expires = cfs_b->runtime_expires;

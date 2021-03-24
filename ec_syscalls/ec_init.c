@@ -6,7 +6,10 @@
 #include<ec/read_quota.h>
 #include<ec/get_parent_cgid.h>
 
-int (*ec_connect_)(unsigned int, int, int, unsigned int);
+// int (*ec_connect_)(unsigned int, int, int, unsigned int);
+// EXPORT_SYMBOL(ec_connect_);
+
+int (*ec_connect_)(unsigned int, int, int, int, unsigned int);
 EXPORT_SYMBOL(ec_connect_);
 
 long (*resize_max_mem_)(unsigned short, unsigned long, int);

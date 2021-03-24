@@ -23,18 +23,22 @@
 #include<asm/uaccess.h>
 #include<linux/in.h>
 #include<ec/ec_connection.h>
+#include <ec/sysfs_rt_stats.h>
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
-#include <linux/spinlock_types.h>
-#include <linux/spinlock.h>
+
+#ifndef likely
+#define likely(x)       __builtin_expect((x),1)
+#endif
+#ifndef unlikely
+#define unlikely(x)     __builtin_expect((x),0)
+#endif 
 
 #define __BADARG -1
-
-spinlock_t sock_lock;
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 
@@ -48,6 +52,7 @@ typedef struct ec_msg {
 	uint64_t rsrc_amnt;
 	uint32_t request;
 	uint64_t runtime_remaining;
+	uint64_t seq_num;
 
 } ec_message_t;
 
@@ -57,4 +62,5 @@ unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *m
 uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
 //Global Cloud Manager ip & port must be passed to the ec_connect
-int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip);
+// int ec_connect(unsigned int GCM_ip, int GCM_port, int pid, unsigned int agent_ip);
+int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid, unsigned int agent_ip);

@@ -21,6 +21,7 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 		printk(KERN_INFO"[dbg] memcg is NULL in increase_memcg_margin()\n");
 		return __BADARG;
 	}
+	rcu_read_unlock();
 
 	cur_usage = mem_cgroup_usage(memcg, is_memsw);
 	mem_limit = mem_cgroup_get_max(memcg);
@@ -35,7 +36,7 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 			printk(KERN_INFO"[dbg] increase_memcg_margin: number of reclaimed pages is: %lu\n", nr_reclaimed);
 #endif
 			printk(KERN_INFO"[dbg] increase_memcg_margin: After reclaiming pages, memory margin is: %lu\n", mem_cgroup_margin(memcg));
-			rcu_read_unlock();
+			// rcu_read_unlock();
 			return nr_reclaimed;
 		}
 		printk(KERN_ALERT"[Error] increase_memcg_margin: no pages reclaimed!\n");
@@ -43,7 +44,7 @@ unsigned long increase_memcg_margin(int pid, unsigned long nr_pages, int is_mems
 	else {
 		printk(KERN_INFO"[ERROR] Current container memory usage is more than the limit specified\n");
 	}
-	rcu_read_unlock();
+	// rcu_read_unlock();
 	return 0;
 	
 }
