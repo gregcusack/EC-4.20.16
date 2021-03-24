@@ -67,7 +67,6 @@
 
 /* EC */
 #include <ec/ec_connection.h>
-#include <ec/sysfs_rt_stats.h>
 
 #include <asm/tlb.h>
 

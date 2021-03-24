@@ -211,8 +211,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	// sockfd 							= cfs_b->ecc->ec_cli;
 	sockfd 							= cfs_b->ecc->ec_udp;
 
-	// kfree(serv_req);
-	// return 0;
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
 	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
@@ -224,7 +222,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	kfree(serv_req);
 
 failed:
-	// return 0;
 	return ret;
 }
 
@@ -329,7 +326,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
-	// struct cgroup_subsys *ss = &cpu_cgrp_subsys;
 
 	ec_message_t *init_msg_req, *init_msg_res;
 	int ret, ret_udp, recv;
@@ -381,13 +377,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	saddr_udp.sin_family = AF_INET;
 	saddr_udp.sin_port = htons(GCM_udp_port);
 	saddr_udp.sin_addr.s_addr = htonl(GCM_ip);
-
-	// ret_udp = sockfd_udp -> ops -> bind(sockfd_udp, (struct sockaddr*) &saddr_udp, sizeof(saddr_udp));
-
-	// if(ret_udp < 0){
-	// 	printk(KERN_ALERT"[ERROR]can't bind udp socket: ret: %d\n", ret_udp);
-	// 	return ret_udp;
-	// }
 
 	/* TCP BELOW */
 	ret = -1;
