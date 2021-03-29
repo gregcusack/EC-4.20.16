@@ -23,7 +23,6 @@
 #include<asm/uaccess.h>
 #include<linux/in.h>
 #include<ec/ec_connection.h>
-#include <ec/sysfs_rt_stats.h>
 #include<linux/memcontrol.h>
 #include <linux/pid.h>
 #include <linux/pid_namespace.h>
