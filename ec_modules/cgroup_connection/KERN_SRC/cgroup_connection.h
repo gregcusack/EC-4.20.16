@@ -38,7 +38,7 @@
 #endif 
 
 #define __BADARG -1
-#define THREAD_ARRAY_SIZE 1024;
+#define THREAD_ARRAY_SIZE 1024
 
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
