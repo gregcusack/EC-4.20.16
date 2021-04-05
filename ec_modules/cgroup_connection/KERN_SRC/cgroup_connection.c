@@ -24,10 +24,10 @@ int stat_report_thread_fcn(void *stats) {
 	while(!kthread_should_stop()) {
 		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 		ssleep(5);
-	}
 
-	if (signal_pending(_ec_c->stat_report_thread)) {
-		break;
+		if (signal_pending(_ec_c->stat_report_thread)) {
+			break;
+		}
 	}
 	do_exit(0);
 	PERR("Worker task exiting\n");
