@@ -433,7 +433,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	memset(thread_array, (struct task_struct*)NULL, sizeof(thread_array));
+	memset(thread_array, 0, sizeof(thread_array));
 	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
