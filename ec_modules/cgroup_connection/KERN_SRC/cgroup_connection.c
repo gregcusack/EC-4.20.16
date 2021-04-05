@@ -18,6 +18,9 @@ int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
+task_struct *thread_array[THREAD_ARRAY_SIZE]; 
+
+
 int stat_report_thread_fcn(void *stats) {
 	allow_signal(SIGKILL);
 
@@ -430,6 +433,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
+	memset(thread_array, NULL, 1024);
 	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
@@ -438,6 +442,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
+	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
 	wake_up_process(_ec_c->stat_report_thread);
 
 
@@ -497,7 +502,13 @@ static int __init ec_connection_init(void){
 	return 0;
 }
 
-static void __exit ec_connection_exit(void){
+static void __exit ec_connection_exit(void) {
+	printk(KERN_INFO "[DC log] DC kernel threads being killed...\n");
+	for(int i=0; i < THREAD_ARRAY_SIZE; i++) {
+		if(thread_array[i]) {
+			kthread_stop(thread_array[i]);
+		}
+	}
 	printk(KERN_INFO"[Elastic Container Log] Kernel module has been removed!\n");
 }
 
