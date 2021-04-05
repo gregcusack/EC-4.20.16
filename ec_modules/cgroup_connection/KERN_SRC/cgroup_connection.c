@@ -188,8 +188,11 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 	ret = 0;
-	wake_up_process(cfs_b->ecc->stat_report_thread);
-
+	// wake_up_process(cfs_b->ecc->stat_report_thread);
+	_ec_c->stat_report_thread = kthread_run(cfs_b->ecc->thread_fcn, NULL, "dc_thread");
+	if (!_ec_c->stat_report_thread) {
+		ret = -1;
+	} 
 
 
 
@@ -417,13 +420,13 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	_ec_c->stat_report_thread = kthread_create(stat_report_thread_fcn, NULL, "dc_thread");
-	if (_ec_c->stat_report_thread) {
-        printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
-	} else {
-        printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
-		return __BADARG;
-	}
+	// _ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
+	// if (_ec_c->stat_report_thread) {
+    //     printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
+	// } else {
+    //     printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+	// 	return __BADARG;
+	// }
 
 
 	rcu_read_lock();
