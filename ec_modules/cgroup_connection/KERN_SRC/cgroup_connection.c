@@ -188,7 +188,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 	ret = 0;
-	wake_up_process(cfs_b->ecc->stat_report_thread);
+	// wake_up_process(cfs_b->ecc->stat_report_thread);
 
 
 
@@ -407,7 +407,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;
-	_ec_c -> thread_fcn						= &stat_report_thread_fcn;
+	// _ec_c -> thread_fcn						= &stat_report_thread_fcn;
 	_ec_c -> ec_cli 						= sockfd_cli;
 	_ec_c -> ec_udp							= sockfd_udp;
 	cfs_b -> ecc 							= _ec_c;
@@ -417,13 +417,13 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	_ec_c->stat_report_thread = kthread_create(stat_report_thread_fcn, NULL, "dc_thread");
-	if (_ec_c->stat_report_thread) {
-        printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
-	} else {
-        printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
-		return __BADARG;
-	}
+	// _ec_c->stat_report_thread = kthread_create(stat_report_thread_fcn, NULL, "dc_thread");
+	// if (_ec_c->stat_report_thread) {
+    //     printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
+	// } else {
+    //     printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+	// 	return __BADARG;
+	// }
 
 
 	rcu_read_lock();
