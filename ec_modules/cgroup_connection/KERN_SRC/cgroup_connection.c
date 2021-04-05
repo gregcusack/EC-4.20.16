@@ -18,7 +18,7 @@ int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
-task_struct *thread_array[THREAD_ARRAY_SIZE]; 
+struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 
 
 int stat_report_thread_fcn(void *stats) {
@@ -503,8 +503,9 @@ static int __init ec_connection_init(void){
 }
 
 static void __exit ec_connection_exit(void) {
+	int i;
 	printk(KERN_INFO "[DC log] DC kernel threads being killed...\n");
-	for(int i=0; i < THREAD_ARRAY_SIZE; i++) {
+	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
 		if(thread_array[i]) {
 			kthread_stop(thread_array[i]);
 		}
