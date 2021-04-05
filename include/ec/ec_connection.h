@@ -15,7 +15,7 @@
 #include <linux/net.h>
 #include <linux/inet.h>
 #include <linux/memcontrol.h>
-#include <kthread.h>
+#include <linux/kthread.h>
 
 struct cfs_bandwidth;
 
