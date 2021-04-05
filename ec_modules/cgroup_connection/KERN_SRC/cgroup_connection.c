@@ -19,8 +19,18 @@ int CONTROLLER_IP;
 int HOST_IP;
 
 int stat_report_thread_fcn(void *stats) {
-	printk(KERN_INFO "supp i am in thread my brother\n");
-	// do_exit(0);
+	allow_signal(SIGKILL);
+
+	while(!kthread_should_stop()) {
+		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+		ssleep(5);
+	}
+
+	if (signal_pending(worker_task)) {
+		break;
+	}
+	do_exit(0);
+	PERR("Worker task exiting\n");
 	return 0;
 }
 
@@ -189,10 +199,10 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	}
 	ret = 0;
 	// wake_up_process(cfs_b->ecc->stat_report_thread);
-	_ec_c->stat_report_thread = kthread_run(cfs_b->ecc->thread_fcn, NULL, "dc_thread");
-	if (!_ec_c->stat_report_thread) {
-		ret = -1;
-	} 
+	// _ec_c->stat_report_thread = kthread_run(cfs_b->ecc->thread_fcn, NULL, "dc_thread");
+	// if (!_ec_c->stat_report_thread) {
+	// 	ret = -1;
+	// } 
 
 
 
@@ -420,13 +430,15 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	// _ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
-	// if (_ec_c->stat_report_thread) {
-    //     printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
-	// } else {
-    //     printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
-	// 	return __BADARG;
-	// }
+	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
+	if (_ec_c->stat_report_thread) {
+        printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
+	} else {
+        printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+		return __BADARG;
+	}
+
+	wake_up_process(_ec_c->stat_report_thread);
 
 
 	rcu_read_lock();
