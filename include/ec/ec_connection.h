@@ -15,6 +15,7 @@
 #include <linux/net.h>
 #include <linux/inet.h>
 #include <linux/memcontrol.h>
+#include <kthread.h>
 
 struct cfs_bandwidth;
 
@@ -31,6 +32,10 @@ struct ec_connection {
 	struct socket* ec_cli;
 
 	struct socket *ec_udp;
+
+	struct task_struct *stat_report_thread;
+
+	int (*thread_fcn)(void *stats);
 
 };
 

@@ -18,20 +18,11 @@ int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
-// u32 create_address(u8 *ip)
-// {
-//         u32 addr = 0;
-//         int i;
-
-//         for(i=0; i<4; i++)
-//         {
-//                 addr += ip[i];
-//                 if(i==3)
-//                         break;
-//                 addr <<= 8;
-//         }
-//         return addr;
-// }
+int stat_report_thread_fcn(void *stats) {
+	printk(KERN_INFO "supp i am in thread my brother\n");
+	do_exit(0);
+	return 0;
+}
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
@@ -196,30 +187,33 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		ret = -1;
 		goto failed;
 	}
+	ret = 0;
+	wake_up_process(cfs_b->ecc->stat_report_thread);
 
-	cfs_b->seq_num++;
 
-	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
-	serv_req -> client_ip			= HOST_IP;
-	serv_req -> req_type 			= 0;
-	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
-	serv_req -> rsrc_amnt 			= cfs_b->quota;
-	serv_req -> request				= cfs_b->nr_throttled;
-	serv_req -> runtime_remaining 	= cfs_b->runtime;
-	serv_req -> seq_num				= cfs_b->seq_num;
-	// sockfd 							= cfs_b->ecc->ec_cli;
-	sockfd 							= cfs_b->ecc->ec_udp;
 
-	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
+	// cfs_b->seq_num++;
 
-	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
+	// serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 
-	if(unlikely(ret)) {
-		printk(KERN_INFO "TX failed\n");
-	}
-	kfree(serv_req);
+	// serv_req -> client_ip			= HOST_IP;
+	// serv_req -> req_type 			= 0;
+	// serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
+	// serv_req -> rsrc_amnt 			= cfs_b->quota;
+	// serv_req -> request				= cfs_b->nr_throttled;
+	// serv_req -> runtime_remaining 	= cfs_b->runtime;
+	// serv_req -> seq_num				= cfs_b->seq_num;
+	// sockfd 							= cfs_b->ecc->ec_udp;
+
+	// //printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
+
+	// ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
+
+	// if(unlikely(ret)) {
+	// 	printk(KERN_INFO "TX failed\n");
+	// }
+	// kfree(serv_req);
 
 failed:
 	return ret;
@@ -413,6 +407,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;
+	_ec_c -> thread_fcn						= &stat_report_thread_fcn;
 	_ec_c -> ec_cli 						= sockfd_cli;
 	_ec_c -> ec_udp							= sockfd_udp;
 	cfs_b -> ecc 							= _ec_c;
@@ -421,7 +416,15 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
-	printk(KERN_INFO"[Success] cfb_b successfully connected to ec_c!\n");
+
+	_ec_c->stat_report_thread = kthread_create(stat_report_thread_fcn, NULL, "dc_thread");
+	if (_ec_c->stat_report_thread) {
+        printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
+	} else {
+        printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+		return __BADARG;
+	}
+
 
 	rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
