@@ -20,7 +20,7 @@ int HOST_IP;
 
 int stat_report_thread_fcn(void *stats) {
 	printk(KERN_INFO "supp i am in thread my brother\n");
-	do_exit(0);
+	// do_exit(0);
 	return 0;
 }
 
