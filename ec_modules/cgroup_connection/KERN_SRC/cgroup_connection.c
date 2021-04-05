@@ -442,7 +442,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE)
+	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE);
 
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
 	wake_up_process(_ec_c->stat_report_thread);
