@@ -26,7 +26,7 @@ int stat_report_thread_fcn(void *stats) {
 		ssleep(5);
 	}
 
-	if (signal_pending(worker_task)) {
+	if (signal_pending(_ec_c->stat_report_thread)) {
 		break;
 	}
 	do_exit(0);
