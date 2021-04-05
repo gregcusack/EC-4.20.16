@@ -442,6 +442,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
+	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE)
+
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
 	wake_up_process(_ec_c->stat_report_thread);
 
@@ -507,7 +509,9 @@ static void __exit ec_connection_exit(void) {
 	printk(KERN_INFO "[DC log] DC kernel threads being killed...\n");
 	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
 		if(thread_array[i]) {
+			printk(KERN_INFO "killing thread array [i]: %d\n", i);
 			kthread_stop(thread_array[i]);
+
 		}
 	}
 	printk(KERN_INFO"[Elastic Container Log] Kernel module has been removed!\n");
