@@ -339,7 +339,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct mem_cgroup *memcg;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, ret_udp, recv, i;
+	int ret, ret_udp, recv;
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
@@ -444,9 +444,9 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 
 	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE);
 
-	spin_lock(&thread_array_lock);
+	mutex_lock(&thread_array_lock);
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
-	spin_unlock(&thread_array_lock);
+	mutex_unlock(&thread_array_lock);
 
 	wake_up_process(_ec_c->stat_report_thread);
 
