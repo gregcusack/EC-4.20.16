@@ -19,6 +19,7 @@ int CONTROLLER_IP;
 int HOST_IP;
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
+struct mutex thread_array_lock;
 
 
 int stat_report_thread_fcn(void *stats) {
@@ -433,7 +434,6 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	memset(thread_array, 0, sizeof(thread_array));
 	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
@@ -444,18 +444,21 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 
 	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE);
 
+	spin_lock(&thread_array_lock);
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
+	spin_unlock(&thread_array_lock);
+
 	wake_up_process(_ec_c->stat_report_thread);
 
-	printk(KERN_INFO "printing threads...\n");
-	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
-		if(thread_array[i]) {
-			printk(KERN_INFO "\nthread_id cgid: %d\n", i);
-		}
-		else {
-			printk(KERN_INFO "0 ");
-		}
-	}
+	// printk(KERN_INFO "printing threads...\n");
+	// for(i=0; i < THREAD_ARRAY_SIZE; i++) {
+	// 	if(thread_array[i]) {
+	// 		printk(KERN_INFO "\nthread_id cgid: %d\n", i);
+	// 	}
+	// 	else {
+	// 		printk(KERN_INFO "0 ");
+	// 	}
+	// }
 
 
 
@@ -511,6 +514,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
+	mutex_init(&thread_array_lock);
+	memset(thread_array, 0, sizeof(thread_array));
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }
