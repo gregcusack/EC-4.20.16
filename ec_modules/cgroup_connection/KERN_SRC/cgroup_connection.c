@@ -338,7 +338,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct mem_cgroup *memcg;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, ret_udp, recv;
+	int ret, ret_udp, recv, i;
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
@@ -446,6 +446,17 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
 	wake_up_process(_ec_c->stat_report_thread);
+
+	printk(KERN_INFO "printing threads...\n");
+	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
+		if(thread_array[i]) {
+			printk(KERN_INFO "\nthread_id cgid: %d\n", i);
+		}
+		else {
+			printk(KERN_INFO "0 ");
+		}
+	}
+
 
 
 	rcu_read_lock();
