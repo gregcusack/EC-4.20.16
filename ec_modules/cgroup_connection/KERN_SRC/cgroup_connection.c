@@ -22,7 +22,7 @@ int HOST_IP;
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
 // static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
-// static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
+static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
 
 
 // static const unsigned char expected_result[TEST_FIFO_SIZE] = {
@@ -623,7 +623,7 @@ static int __init ec_connection_init(void){
 	ec_connect_ = &ec_connect;
 	mutex_init(&thread_array_lock);
 	memset(thread_array, 0, sizeof(thread_array));
-	// INIT_KFIFO(stat_fifo);
+	INIT_KFIFO(stat_fifo);
 	// INIT_KFIFO(test_fifo);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
