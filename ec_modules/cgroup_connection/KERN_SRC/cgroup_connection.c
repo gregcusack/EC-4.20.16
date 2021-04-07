@@ -34,10 +34,9 @@ static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need
 
 /* TODO
  * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
- * ------------get() handles a single element. out() handles multiple elements
+ * ------------get()/in() handle a single element. out()/put() handle multiple elements
  * How do we wait until something is in the queue in a good way. Currently, it will just spin for days. that is bad.
- * In report_cpu_usage(), we need to figure out the difference between kfifo_put() and kfifo_in() and what do these return?
- * What does kfifo_get() return? How do we handle this
+ * What does kfifo_get() return? Returns 0 if fifo is empty
  */
 
 int stat_report_thread_fcn(void *stats) {
@@ -47,7 +46,7 @@ int stat_report_thread_fcn(void *stats) {
 
 	while(!kthread_should_stop()) {
 		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
-		ssleep(5);
+		msleep(10);
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
