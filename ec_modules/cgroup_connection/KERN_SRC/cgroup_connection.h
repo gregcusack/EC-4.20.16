@@ -41,7 +41,7 @@
 #define __BADARG -1
 #define THREAD_ARRAY_SIZE 256
 #define STAT_FIFO_SIZE	128
-#define TEST_FIFO_SIZE	32
+// #define TEST_FIFO_SIZE	32
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 

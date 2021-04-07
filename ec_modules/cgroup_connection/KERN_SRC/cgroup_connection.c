@@ -21,16 +21,16 @@ int HOST_IP;
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
-static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
+// static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
 static DECLARE_KFIFO(stat_fifo, struct ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
 
 
-static const unsigned char expected_result[TEST_FIFO_SIZE] = {
-	 3,  4,  5,  6,  7,  8,  9,  0,
-	 1, 20, 21, 22, 23, 24, 25, 26,
-	27, 28, 29, 30, 31, 32, 33, 34,
-	35, 36, 37, 38, 39, 40, 41, 42,
-};
+// static const unsigned char expected_result[TEST_FIFO_SIZE] = {
+// 	 3,  4,  5,  6,  7,  8,  9,  0,
+// 	 1, 20, 21, 22, 23, 24, 25, 26,
+// 	27, 28, 29, 30, 31, 32, 33, 34,
+// 	35, 36, 37, 38, 39, 40, 41, 42,
+// };
 
 /* TODO
  * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
@@ -40,9 +40,10 @@ static const unsigned char expected_result[TEST_FIFO_SIZE] = {
  */
 
 int stat_report_thread_fcn(void *stats) {
+	// ec_message_t *stat_to_send;
+	// int ret;
 	allow_signal(SIGKILL);
-	ec_message_t *stat_to_send;
-	int ret;
+
 
 	while(!kthread_should_stop()) {
 		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
@@ -54,7 +55,7 @@ int stat_report_thread_fcn(void *stats) {
 			//maybe sleep for a hot second here?
 			continue;
 		} else {
-			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size);
+			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size());
 		}
 		kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
 		if(!stat_to_send) {
@@ -80,81 +81,81 @@ int stat_report_thread_fcn(void *stats) {
 
 
 
-int kfifo_example_thread_fcn(void *stats) {
-	allow_signal(SIGKILL);
+// int kfifo_example_thread_fcn(void *stats) {
+// 	allow_signal(SIGKILL);
 
-	unsigned char	buf[6];
-	unsigned char	i, j;
-	unsigned int	ret;
-	int flag = 1;
+// 	unsigned char	buf[6];
+// 	unsigned char	i, j;
+// 	unsigned int	ret;
+// 	int flag = 1;
 
-	printk(KERN_INFO "byte stream fifo test start\n");
+// 	printk(KERN_INFO "byte stream fifo test start\n");
 
-	while(!kthread_should_stop()) {
-		while(flag && !kthread_should_stop()) {
-			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+// 	while(!kthread_should_stop()) {
+// 		while(flag && !kthread_should_stop()) {
+// 			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 
-			/* put string into the fifo */
-			kfifo_in(&test_fifo, "hello", 5);
+// 			/* put string into the fifo */
+// 			kfifo_in(&test_fifo, "hello", 5);
 
-			/* put values into the fifo */
-			for (i = 0; i != 10; i++)
-				kfifo_put(&test_fifo, i);
+// 			/* put values into the fifo */
+// 			for (i = 0; i != 10; i++)
+// 				kfifo_put(&test_fifo, i);
 
-			/* show the number of used elements */
-			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&test_fifo));
+// 			/* show the number of used elements */
+// 			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&test_fifo));
 
-			/* get max of 5 bytes from the fifo */
-			i = kfifo_out(&test_fifo, buf, 5);
-			printk(KERN_INFO "buf: %.*s\n", i, buf);
+// 			/* get max of 5 bytes from the fifo */
+// 			i = kfifo_out(&test_fifo, buf, 5);
+// 			printk(KERN_INFO "buf: %.*s\n", i, buf);
 
-			/* get max of 2 elements from the fifo */
-			ret = kfifo_out(&test_fifo, buf, 2);
-			printk(KERN_INFO "ret: %d\n", ret);
-			/* and put it back to the end of the fifo */
-			ret = kfifo_in(&test_fifo, buf, ret);
-			printk(KERN_INFO "ret: %d\n", ret);
+// 			/* get max of 2 elements from the fifo */
+// 			ret = kfifo_out(&test_fifo, buf, 2);
+// 			printk(KERN_INFO "ret: %d\n", ret);
+// 			/* and put it back to the end of the fifo */
+// 			ret = kfifo_in(&test_fifo, buf, ret);
+// 			printk(KERN_INFO "ret: %d\n", ret);
 
-			/* skip first element of the fifo */
-			printk(KERN_INFO "skip 1st element\n");
-			kfifo_skip(&test_fifo);
+// 			/* skip first element of the fifo */
+// 			printk(KERN_INFO "skip 1st element\n");
+// 			kfifo_skip(&test_fifo);
 
-			/* put values into the fifo until is full */
-			for (i = 20; kfifo_put(&test_fifo, i); i++)
-				;
+// 			/* put values into the fifo until is full */
+// 			for (i = 20; kfifo_put(&test_fifo, i); i++)
+// 				;
 
-			printk(KERN_INFO "queue len: %u\n", kfifo_len(&test_fifo));
+// 			printk(KERN_INFO "queue len: %u\n", kfifo_len(&test_fifo));
 
-			/* show the first value without removing from the fifo */
-			if (kfifo_peek(&test_fifo, &i))
-				printk(KERN_INFO "%d\n", i);
+// 			/* show the first value without removing from the fifo */
+// 			if (kfifo_peek(&test_fifo, &i))
+// 				printk(KERN_INFO "%d\n", i);
 
-			/* check the correctness of all values in the fifo */
-			j = 0;
-			while (kfifo_get(&test_fifo, &i)) {
-				printk(KERN_INFO "item = %d\n", i);
-				if (i != expected_result[j++]) {
-					printk(KERN_WARNING "value mismatch: test failed\n");
-					return -EIO;
-				}
-			}
-			if (j != ARRAY_SIZE(expected_result)) {
-				printk(KERN_WARNING "size mismatch: test failed\n");
-				return -EIO;
-			}
-			printk(KERN_INFO "test passed\n");
-			flag = 0;
-		}
-		ssleep(5);
-		if (signal_pending(_ec_c->stat_report_thread)) {
-			break;
-		}
+// 			/* check the correctness of all values in the fifo */
+// 			j = 0;
+// 			while (kfifo_get(&test_fifo, &i)) {
+// 				printk(KERN_INFO "item = %d\n", i);
+// 				if (i != expected_result[j++]) {
+// 					printk(KERN_WARNING "value mismatch: test failed\n");
+// 					return -EIO;
+// 				}
+// 			}
+// 			if (j != ARRAY_SIZE(expected_result)) {
+// 				printk(KERN_WARNING "size mismatch: test failed\n");
+// 				return -EIO;
+// 			}
+// 			printk(KERN_INFO "test passed\n");
+// 			flag = 0;
+// 		}
+// 		ssleep(5);
+// 		if (signal_pending(_ec_c->stat_report_thread)) {
+// 			break;
+// 		}
 
-	}
-	do_exit(0);
-	PERR("Worker task exiting\n");
-	return 0;
-}
+// 	}
+// 	do_exit(0);
+// 	PERR("Worker task exiting\n");
+// 	return 0;
+// }
 
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
@@ -312,7 +313,7 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
-	struct socket* sockfd = NULL;
+	// struct socket* sockfd = NULL;
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
@@ -623,7 +624,7 @@ static int __init ec_connection_init(void){
 	mutex_init(&thread_array_lock);
 	memset(thread_array, 0, sizeof(thread_array));
 	INIT_KFIFO(stat_fifo);
-	INIT_KFIFO(test_fifo);
+	// INIT_KFIFO(test_fifo);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }
