@@ -34,6 +34,7 @@ static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need
 
 /* TODO
  * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
+ * ------------get() handles a single element. out() handles multiple elements
  * How do we wait until something is in the queue in a good way. Currently, it will just spin for days. that is bad.
  * In report_cpu_usage(), we need to figure out the difference between kfifo_put() and kfifo_in() and what do these return?
  * What does kfifo_get() return? How do we handle this
@@ -44,20 +45,18 @@ int stat_report_thread_fcn(void *stats) {
 	int ret;
 	allow_signal(SIGKILL);
 
-
 	while(!kthread_should_stop()) {
 		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 		ssleep(5);
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		if(kfifo_is_empty(&stat_fifo)) { //check if fifo empty
-			//maybe sleep for a hot second here?
-			continue;
+		if(!kfifo_get(&stat_fifo, &stat_to_send)) { //returns 0 if fifo is empty
+			continue; //fifo empty
 		} else {
-			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo));
+			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo)); //todo remove this. this is debug
 		}
-		kfifo_get(&stat_fifo, &stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
+
 		if(!stat_to_send) {
 			printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
 			continue; //go back to top and try again
