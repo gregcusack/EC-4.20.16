@@ -18,25 +18,91 @@ int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
+
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
+static DECLARE_KFIFO(stat_fifo, unsigned char, FIFO_SIZE);
 
+static const unsigned char expected_result[FIFO_SIZE] = {
+	 3,  4,  5,  6,  7,  8,  9,  0,
+	 1, 20, 21, 22, 23, 24, 25, 26,
+	27, 28, 29, 30, 31, 32, 33, 34,
+	35, 36, 37, 38, 39, 40, 41, 42,
+};
 
 int stat_report_thread_fcn(void *stats) {
 	allow_signal(SIGKILL);
 
+	unsigned char	buf[6];
+	unsigned char	i, j;
+	unsigned int	ret;
+
+	printk(KERN_INFO "byte stream fifo test start\n");
+
 	while(!kthread_should_stop()) {
 		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
-		ssleep(5);
+
+		/* put string into the fifo */
+		kfifo_in(&stat_fifo, "hello", 5);
+
+		/* put values into the fifo */
+		for (i = 0; i != 10; i++)
+			kfifo_put(&stat_fifo, i);
+
+		/* show the number of used elements */
+		printk(KERN_INFO "fifo len: %u\n", kfifo_len(&stat_fifo));
+
+		/* get max of 5 bytes from the fifo */
+		i = kfifo_out(&stat_fifo, buf, 5);
+		printk(KERN_INFO "buf: %.*s\n", i, buf);
+
+		/* get max of 2 elements from the fifo */
+		ret = kfifo_out(&stat_fifo, buf, 2);
+		printk(KERN_INFO "ret: %d\n", ret);
+		/* and put it back to the end of the fifo */
+		ret = kfifo_in(&stat_fifo, buf, ret);
+		printk(KERN_INFO "ret: %d\n", ret);
+
+		/* skip first element of the fifo */
+		printk(KERN_INFO "skip 1st element\n");
+		kfifo_skip(&stat_fifo);
+
+		/* put values into the fifo until is full */
+		for (i = 20; kfifo_put(&stat_fifo, i); i++)
+			;
+
+		printk(KERN_INFO "queue len: %u\n", kfifo_len(&stat_fifo));
+
+		/* show the first value without removing from the fifo */
+		if (kfifo_peek(&stat_fifo, &i))
+			printk(KERN_INFO "%d\n", i);
+
+		/* check the correctness of all values in the fifo */
+		j = 0;
+		while (kfifo_get(&stat_fifo, &i)) {
+			printk(KERN_INFO "item = %d\n", i);
+			if (i != expected_result[j++]) {
+				printk(KERN_WARNING "value mismatch: test failed\n");
+				return -EIO;
+			}
+		}
+		if (j != ARRAY_SIZE(expected_result)) {
+			printk(KERN_WARNING "size mismatch: test failed\n");
+			return -EIO;
+		}
+		printk(KERN_INFO "test passed\n");
 
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
+		break;
+
 	}
 	do_exit(0);
 	PERR("Worker task exiting\n");
 	return 0;
 }
+
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
@@ -447,20 +513,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	mutex_lock(&thread_array_lock);
 	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
 	mutex_unlock(&thread_array_lock);
-
 	wake_up_process(_ec_c->stat_report_thread);
-
-	// printk(KERN_INFO "printing threads...\n");
-	// for(i=0; i < THREAD_ARRAY_SIZE; i++) {
-	// 	if(thread_array[i]) {
-	// 		printk(KERN_INFO "\nthread_id cgid: %d\n", i);
-	// 	}
-	// 	else {
-	// 		printk(KERN_INFO "0 ");
-	// 	}
-	// }
-
-
 
 	rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
@@ -516,6 +569,7 @@ static int __init ec_connection_init(void){
 	ec_connect_ = &ec_connect;
 	mutex_init(&thread_array_lock);
 	memset(thread_array, 0, sizeof(thread_array));
+	INIT_KFIFO(stat_fifo);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }

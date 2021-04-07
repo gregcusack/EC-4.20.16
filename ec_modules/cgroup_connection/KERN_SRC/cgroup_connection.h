@@ -29,6 +29,7 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
+#include "kfifo.h"
 
 #ifndef likely
 #define likely(x)       __builtin_expect((x),1)
@@ -38,8 +39,8 @@
 #endif 
 
 #define __BADARG -1
-#define THREAD_ARRAY_SIZE 1024
-
+#define THREAD_ARRAY_SIZE 256
+#define FIFO_SIZE	128
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 
