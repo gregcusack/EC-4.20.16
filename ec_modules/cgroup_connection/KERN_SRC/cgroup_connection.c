@@ -57,7 +57,7 @@ int stat_report_thread_fcn(void *stats) {
 		} else {
 			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo));
 		}
-		kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
+		kfifo_get(&stat_fifo, &stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
 		if(!stat_to_send) {
 			printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
 			continue; //go back to top and try again
