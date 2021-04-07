@@ -51,7 +51,7 @@ int stat_report_thread_fcn(void *stats) {
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		if(kfifo_is_empty(stat_fifo)) { //check if fifo empty
+		if(kfifo_is_empty(&stat_fifo)) { //check if fifo empty
 			//maybe sleep for a hot second here?
 			continue;
 		} else {
