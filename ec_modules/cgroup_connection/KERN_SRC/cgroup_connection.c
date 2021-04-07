@@ -40,8 +40,8 @@ static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need
  */
 
 int stat_report_thread_fcn(void *stats) {
-	// ec_message_t *stat_to_send;
-	// int ret;
+	ec_message_t *stat_to_send;
+	int ret;
 	allow_signal(SIGKILL);
 
 
@@ -51,12 +51,12 @@ int stat_report_thread_fcn(void *stats) {
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		// if(kfifo_is_empty()) { //check if fifo empty
-		// 	//maybe sleep for a hot second here?
-		// 	continue;
-		// } else {
-		// 	printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size());
-		// }
+		if(kfifo_is_empty(stat_fifo)) { //check if fifo empty
+			//maybe sleep for a hot second here?
+			continue;
+		} else {
+			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size());
+		}
 		// kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
 		// if(!stat_to_send) {
 		// 	printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
