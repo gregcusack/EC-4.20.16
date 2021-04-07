@@ -57,22 +57,22 @@ int stat_report_thread_fcn(void *stats) {
 		} else {
 			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo));
 		}
-		// kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
-		// if(!stat_to_send) {
-		// 	printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
-		// 	continue; //go back to top and try again
-		// }
-		// if(!stat_to_send->sockfd) {
-		// 	printk(KERN_ERR "DC threader: sockfd in stat_to_send is NULL!\n");
-		// 	kfree(stat_to_send);
-		// 	continue;
-		// }
+		kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
+		if(!stat_to_send) {
+			printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
+			continue; //go back to top and try again
+		}
+		if(!stat_to_send->sockfd) {
+			printk(KERN_ERR "DC threader: sockfd in stat_to_send is NULL!\n");
+			kfree(stat_to_send);
+			continue;
+		}
 
-		// ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
-		// if(ret) {
-		// 	printk(KERN_ERR "DC threader: UDP TX failed\n");
-		// }
-		// kfree(stat_to_send);
+		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		if(ret) {
+			printk(KERN_ERR "DC threader: UDP TX failed\n");
+		}
+		kfree(stat_to_send);
 	}
 	do_exit(0);
 	PERR("Worker task exiting\n");
@@ -332,14 +332,14 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
 	// sockfd 							= cfs_b->ecc->ec_udp;
 
-	// if(kfifo_is_full()) {
-	// 	printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
-	// 	ret = -1;
-	// 	kfree(serv_req);
-	// 	goto failed;
-	// }
-	// //Does this return anything here??
-	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
+	if(kfifo_is_full(&stat_fifo)) {
+		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
+		ret = -1;
+		kfree(serv_req);
+		goto failed;
+	}
+	//Does this return anything here??
+	kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
 	ret = 0;
 
 
