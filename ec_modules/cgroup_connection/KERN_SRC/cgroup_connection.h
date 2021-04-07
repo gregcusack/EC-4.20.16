@@ -29,7 +29,7 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include "../kernel/sched/sched.h"
-#include "kfifo.h"
+#include <linux/kfifo.h>
 
 #ifndef likely
 #define likely(x)       __builtin_expect((x),1)
