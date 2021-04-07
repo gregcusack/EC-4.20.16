@@ -332,14 +332,14 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
 	// sockfd 							= cfs_b->ecc->ec_udp;
 
-	if(kfifo_is_full()) {
-		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
-		ret = -1;
-		kfree(serv_req);
-		goto failed;
-	}
-	//Does this return anything here??
-	kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
+	// if(kfifo_is_full()) {
+	// 	printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
+	// 	ret = -1;
+	// 	kfree(serv_req);
+	// 	goto failed;
+	// }
+	// //Does this return anything here??
+	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
 	ret = 0;
 
 
@@ -623,7 +623,7 @@ static int __init ec_connection_init(void){
 	ec_connect_ = &ec_connect;
 	mutex_init(&thread_array_lock);
 	memset(thread_array, 0, sizeof(thread_array));
-	INIT_KFIFO(stat_fifo);
+	// INIT_KFIFO(stat_fifo);
 	// INIT_KFIFO(test_fifo);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
