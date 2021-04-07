@@ -55,7 +55,7 @@ int stat_report_thread_fcn(void *stats) {
 			//maybe sleep for a hot second here?
 			continue;
 		} else {
-			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size());
+			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo));
 		}
 		// kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
 		// if(!stat_to_send) {
