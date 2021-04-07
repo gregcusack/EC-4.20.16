@@ -36,11 +36,12 @@ int stat_report_thread_fcn(void *stats) {
 	unsigned char	buf[6];
 	unsigned char	i, j;
 	unsigned int	ret;
+	int flag = 1;
 
 	printk(KERN_INFO "byte stream fifo test start\n");
 
 	while(!kthread_should_stop()) {
-		while(!kthread_should_stop()) {
+		while(flag && !kthread_should_stop()) {
 			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 
 			/* put string into the fifo */
@@ -92,9 +93,9 @@ int stat_report_thread_fcn(void *stats) {
 				return -EIO;
 			}
 			printk(KERN_INFO "test passed\n");
-			break;
+			flag = 0;
 		}
-
+		ssleep(5);
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
