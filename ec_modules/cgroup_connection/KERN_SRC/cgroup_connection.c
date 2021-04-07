@@ -40,62 +40,64 @@ int stat_report_thread_fcn(void *stats) {
 	printk(KERN_INFO "byte stream fifo test start\n");
 
 	while(!kthread_should_stop()) {
-		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+		while(!kthread_should_stop()) {
+			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 
-		/* put string into the fifo */
-		kfifo_in(&stat_fifo, "hello", 5);
+			/* put string into the fifo */
+			kfifo_in(&stat_fifo, "hello", 5);
 
-		/* put values into the fifo */
-		for (i = 0; i != 10; i++)
-			kfifo_put(&stat_fifo, i);
+			/* put values into the fifo */
+			for (i = 0; i != 10; i++)
+				kfifo_put(&stat_fifo, i);
 
-		/* show the number of used elements */
-		printk(KERN_INFO "fifo len: %u\n", kfifo_len(&stat_fifo));
+			/* show the number of used elements */
+			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&stat_fifo));
 
-		/* get max of 5 bytes from the fifo */
-		i = kfifo_out(&stat_fifo, buf, 5);
-		printk(KERN_INFO "buf: %.*s\n", i, buf);
+			/* get max of 5 bytes from the fifo */
+			i = kfifo_out(&stat_fifo, buf, 5);
+			printk(KERN_INFO "buf: %.*s\n", i, buf);
 
-		/* get max of 2 elements from the fifo */
-		ret = kfifo_out(&stat_fifo, buf, 2);
-		printk(KERN_INFO "ret: %d\n", ret);
-		/* and put it back to the end of the fifo */
-		ret = kfifo_in(&stat_fifo, buf, ret);
-		printk(KERN_INFO "ret: %d\n", ret);
+			/* get max of 2 elements from the fifo */
+			ret = kfifo_out(&stat_fifo, buf, 2);
+			printk(KERN_INFO "ret: %d\n", ret);
+			/* and put it back to the end of the fifo */
+			ret = kfifo_in(&stat_fifo, buf, ret);
+			printk(KERN_INFO "ret: %d\n", ret);
 
-		/* skip first element of the fifo */
-		printk(KERN_INFO "skip 1st element\n");
-		kfifo_skip(&stat_fifo);
+			/* skip first element of the fifo */
+			printk(KERN_INFO "skip 1st element\n");
+			kfifo_skip(&stat_fifo);
 
-		/* put values into the fifo until is full */
-		for (i = 20; kfifo_put(&stat_fifo, i); i++)
-			;
+			/* put values into the fifo until is full */
+			for (i = 20; kfifo_put(&stat_fifo, i); i++)
+				;
 
-		printk(KERN_INFO "queue len: %u\n", kfifo_len(&stat_fifo));
+			printk(KERN_INFO "queue len: %u\n", kfifo_len(&stat_fifo));
 
-		/* show the first value without removing from the fifo */
-		if (kfifo_peek(&stat_fifo, &i))
-			printk(KERN_INFO "%d\n", i);
+			/* show the first value without removing from the fifo */
+			if (kfifo_peek(&stat_fifo, &i))
+				printk(KERN_INFO "%d\n", i);
 
-		/* check the correctness of all values in the fifo */
-		j = 0;
-		while (kfifo_get(&stat_fifo, &i)) {
-			printk(KERN_INFO "item = %d\n", i);
-			if (i != expected_result[j++]) {
-				printk(KERN_WARNING "value mismatch: test failed\n");
+			/* check the correctness of all values in the fifo */
+			j = 0;
+			while (kfifo_get(&stat_fifo, &i)) {
+				printk(KERN_INFO "item = %d\n", i);
+				if (i != expected_result[j++]) {
+					printk(KERN_WARNING "value mismatch: test failed\n");
+					return -EIO;
+				}
+			}
+			if (j != ARRAY_SIZE(expected_result)) {
+				printk(KERN_WARNING "size mismatch: test failed\n");
 				return -EIO;
 			}
+			printk(KERN_INFO "test passed\n");
+			break;
 		}
-		if (j != ARRAY_SIZE(expected_result)) {
-			printk(KERN_WARNING "size mismatch: test failed\n");
-			return -EIO;
-		}
-		printk(KERN_INFO "test passed\n");
 
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		break;
 
 	}
 	do_exit(0);
