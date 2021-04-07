@@ -21,16 +21,66 @@ int HOST_IP;
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
-static DECLARE_KFIFO(stat_fifo, unsigned char, FIFO_SIZE);
+static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
+static DECLARE_KFIFO(stat_fifo, struct ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
 
-static const unsigned char expected_result[FIFO_SIZE] = {
+
+static const unsigned char expected_result[TEST_FIFO_SIZE] = {
 	 3,  4,  5,  6,  7,  8,  9,  0,
 	 1, 20, 21, 22, 23, 24, 25, 26,
 	27, 28, 29, 30, 31, 32, 33, 34,
 	35, 36, 37, 38, 39, 40, 41, 42,
 };
 
+/* TODO
+ * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
+ * How do we wait until something is in the queue in a good way. Currently, it will just spin for days. that is bad.
+ * In report_cpu_usage(), we need to figure out the difference between kfifo_put() and kfifo_in() and what do these return?
+ * What does kfifo_get() return? How do we handle this
+ */
+
 int stat_report_thread_fcn(void *stats) {
+	allow_signal(SIGKILL);
+	ec_message_t *stat_to_send;
+	int ret;
+
+	while(!kthread_should_stop()) {
+		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+		ssleep(5);
+		if (signal_pending(_ec_c->stat_report_thread)) {
+			break;
+		}
+		if(kfifo_is_empty()) { //check if fifo empty
+			//maybe sleep for a hot second here?
+			continue;
+		} else {
+			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size);
+		}
+		kfifo_get(&stat_fifo, stat_to_send); 	//This returns something but idk what tbh. does get remove item from queue??
+		if(!stat_to_send) {
+			printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
+			continue; //go back to top and try again
+		}
+		if(!stat_to_send->sockfd) {
+			printk(KERN_ERR "DC threader: sockfd in stat_to_send is NULL!\n");
+			kfree(stat_to_send);
+			continue;
+		}
+
+		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		if(ret) {
+			printk(KERN_ERR "DC threader: UDP TX failed\n");
+		}
+		kfree(stat_to_send);
+	}
+	do_exit(0);
+	PERR("Worker task exiting\n");
+	return 0;
+}
+
+
+
+int kfifo_example_thread_fcn(void *stats) {
 	allow_signal(SIGKILL);
 
 	unsigned char	buf[6];
@@ -45,43 +95,43 @@ int stat_report_thread_fcn(void *stats) {
 			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 
 			/* put string into the fifo */
-			kfifo_in(&stat_fifo, "hello", 5);
+			kfifo_in(&test_fifo, "hello", 5);
 
 			/* put values into the fifo */
 			for (i = 0; i != 10; i++)
-				kfifo_put(&stat_fifo, i);
+				kfifo_put(&test_fifo, i);
 
 			/* show the number of used elements */
-			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&stat_fifo));
+			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&test_fifo));
 
 			/* get max of 5 bytes from the fifo */
-			i = kfifo_out(&stat_fifo, buf, 5);
+			i = kfifo_out(&test_fifo, buf, 5);
 			printk(KERN_INFO "buf: %.*s\n", i, buf);
 
 			/* get max of 2 elements from the fifo */
-			ret = kfifo_out(&stat_fifo, buf, 2);
+			ret = kfifo_out(&test_fifo, buf, 2);
 			printk(KERN_INFO "ret: %d\n", ret);
 			/* and put it back to the end of the fifo */
-			ret = kfifo_in(&stat_fifo, buf, ret);
+			ret = kfifo_in(&test_fifo, buf, ret);
 			printk(KERN_INFO "ret: %d\n", ret);
 
 			/* skip first element of the fifo */
 			printk(KERN_INFO "skip 1st element\n");
-			kfifo_skip(&stat_fifo);
+			kfifo_skip(&test_fifo);
 
 			/* put values into the fifo until is full */
-			for (i = 20; kfifo_put(&stat_fifo, i); i++)
+			for (i = 20; kfifo_put(&test_fifo, i); i++)
 				;
 
-			printk(KERN_INFO "queue len: %u\n", kfifo_len(&stat_fifo));
+			printk(KERN_INFO "queue len: %u\n", kfifo_len(&test_fifo));
 
 			/* show the first value without removing from the fifo */
-			if (kfifo_peek(&stat_fifo, &i))
+			if (kfifo_peek(&test_fifo, &i))
 				printk(KERN_INFO "%d\n", i);
 
 			/* check the correctness of all values in the fifo */
 			j = 0;
-			while (kfifo_get(&stat_fifo, &i)) {
+			while (kfifo_get(&test_fifo, &i)) {
 				printk(KERN_INFO "item = %d\n", i);
 				if (i != expected_result[j++]) {
 					printk(KERN_WARNING "value mismatch: test failed\n");
@@ -266,33 +316,33 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
-		// return -1;
 		ret = -1;
 		goto failed;
 	}
-	ret = 0;
-	// wake_up_process(cfs_b->ecc->stat_report_thread);
-	// _ec_c->stat_report_thread = kthread_run(cfs_b->ecc->thread_fcn, NULL, "dc_thread");
-	// if (!_ec_c->stat_report_thread) {
-	// 	ret = -1;
-	// } 
 
-
-
-	// cfs_b->seq_num++;
-
-	// serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-
-	// serv_req -> client_ip			= HOST_IP;
-	// serv_req -> req_type 			= 0;
-	// serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
-	// serv_req -> rsrc_amnt 			= cfs_b->quota;
-	// serv_req -> request				= cfs_b->nr_throttled;
-	// serv_req -> runtime_remaining 	= cfs_b->runtime;
-	// serv_req -> seq_num				= cfs_b->seq_num;
+	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
+	serv_req -> client_ip			= HOST_IP;
+	serv_req -> req_type 			= 0;
+	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
+	serv_req -> rsrc_amnt 			= cfs_b->quota;
+	serv_req -> request				= cfs_b->nr_throttled;
+	serv_req -> runtime_remaining 	= cfs_b->runtime;
+	serv_req -> seq_num				= cfs_b->seq_num;
+	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
 	// sockfd 							= cfs_b->ecc->ec_udp;
 
-	// //printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
+	if(kfifo_is_full()) {
+		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
+		ret = -1;
+		kfree(serv_req);
+		goto failed;
+	}
+	//Does this return anything here??
+	kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
+	ret = 0;
+
+
+	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
 	// ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
@@ -573,6 +623,7 @@ static int __init ec_connection_init(void){
 	mutex_init(&thread_array_lock);
 	memset(thread_array, 0, sizeof(thread_array));
 	INIT_KFIFO(stat_fifo);
+	INIT_KFIFO(test_fifo);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }

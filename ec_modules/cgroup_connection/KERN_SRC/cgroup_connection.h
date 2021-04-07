@@ -40,7 +40,8 @@
 
 #define __BADARG -1
 #define THREAD_ARRAY_SIZE 256
-#define FIFO_SIZE	32
+#define STAT_FIFO_SIZE	128
+#define TEST_FIFO_SIZE	32
 
 DECLARE_WAIT_QUEUE_HEAD(recv_wait);
 
@@ -55,11 +56,13 @@ typedef struct ec_msg {
 	uint32_t request;
 	uint64_t runtime_remaining;
 	uint64_t seq_num;
+	struct socket *sockfd;
 
 } ec_message_t;
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
 int tcp_rcv(struct socket* sock, char* str, int max_size, unsigned long flags);
+int udp_send(struct socket* sock, const char* buff, const size_t length);
 unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg);
 uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
