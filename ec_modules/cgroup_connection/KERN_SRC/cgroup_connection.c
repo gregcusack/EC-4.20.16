@@ -21,6 +21,7 @@ int HOST_IP;
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
+spinlock_t fifo_spinlock;
 // static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
 static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
 
@@ -41,12 +42,12 @@ static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need
 
 int stat_report_thread_fcn(void *stats) {
 	ec_message_t *stat_to_send;
-	int ret;
+	// int ret;
 	allow_signal(SIGKILL);
 
 	while(!kthread_should_stop()) {
-		printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
-		msleep(10);
+		// printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+		// msleep(10);
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
@@ -65,11 +66,17 @@ int stat_report_thread_fcn(void *stats) {
 			kfree(stat_to_send);
 			continue;
 		}
-
-		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
-		if(ret) {
-			printk(KERN_ERR "DC threader: UDP TX failed\n");
+		if(!stat_to_send->cgroup_id) {
+			printk(KERN_ERR "DC threader: cgroup_id in stat_to_send is NULL!\n");
+			kfree(stat_to_send);
+			continue;
 		}
+		printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
+
+		// ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		// if(ret) {
+		// 	printk(KERN_ERR "DC threader: UDP TX failed\n");
+		// }
 		kfree(stat_to_send);
 	}
 	do_exit(0);
@@ -241,6 +248,11 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	int raddrlen = sizeof(raddr);
 
 	struct msghdr msg;
+	struct kvec vec;
+	int sent, size_pkt, totbytes = 0;
+	long long buffer_size = length;
+	char * buf = (char *) buff;
+	mm_segment_t oldmm;
 	// struct iovec iov;
 	// int len;
 	// len = strlen(buff) + 1;
@@ -258,13 +270,6 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	// 	printk(KERN_ALERT "Failed to send full msg on udp sock! len: %d, length: %d\n", len, length);
 	// }
 	// return 0;
-
-	struct kvec vec;
-	int sent, size_pkt, totbytes = 0;
-	long long buffer_size = length;
-	char * buf = (char *) buff;
-
-	mm_segment_t oldmm;
 
   	while(buffer_size > 0){
 		// if(buffer_size < MAX_UDP_SIZE) {
@@ -311,13 +316,16 @@ unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_messa
 int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
-	// struct socket* sockfd = NULL;
+	struct socket* sockfd = NULL;
+	// int kfifo_ret;
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
 		ret = -1;
 		goto failed;
 	}
+
+	cfs_b->seq_num++;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
 	serv_req -> client_ip			= HOST_IP;
@@ -328,7 +336,7 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	serv_req -> seq_num				= cfs_b->seq_num;
 	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
-	// sockfd 							= cfs_b->ecc->ec_udp;
+	sockfd 							= cfs_b->ecc->ec_udp;
 
 	if(kfifo_is_full(&stat_fifo)) {
 		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
@@ -337,18 +345,19 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 	//Does this return anything here??
-	kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
-	ret = 0;
-
+	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
+	// kfifo_in_spinlocked(&stat_fifo, &serv_req, 1, &fifo_spinlock); //add stat to fifo. 
+	// kfifo_ret = kfifo_in(&stat_fifo, &serv_req, 1);
+	// ret = 0;
 
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	// ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
+	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
-	// if(unlikely(ret)) {
-	// 	printk(KERN_INFO "TX failed\n");
-	// }
-	// kfree(serv_req);
+	if(unlikely(ret)) {
+		printk(KERN_INFO "TX failed\n");
+	}
+	kfree(serv_req);
 
 failed:
 	return ret;
@@ -619,10 +628,10 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
-	mutex_init(&thread_array_lock);
-	memset(thread_array, 0, sizeof(thread_array));
-	INIT_KFIFO(stat_fifo);
-	// INIT_KFIFO(test_fifo);
+	// mutex_init(&thread_array_lock);
+	// memset(thread_array, 0, sizeof(thread_array));
+	// INIT_KFIFO(stat_fifo);
+	// spin_lock_init(&fifo_spinlock);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }
