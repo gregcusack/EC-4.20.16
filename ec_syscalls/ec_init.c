@@ -5,7 +5,7 @@
 #include<ec/increase_memcg_margin.h>
 #include<ec/read_quota.h>
 #include<ec/get_parent_cgid.h>
-
+#include<ec/read_mem_usage.h>
 // int (*ec_connect_)(unsigned int, int, int, unsigned int);
 // EXPORT_SYMBOL(ec_connect_);
 
@@ -26,6 +26,9 @@ EXPORT_SYMBOL(read_quota_);
 
 int (*get_parent_cgid_)(int);
 EXPORT_SYMBOL(get_parent_cgid_);
+
+unsigned long (*read_mem_usage_)(unsigned short);
+EXPORT_SYMBOL(read_mem_usage_);
 
 void __init ec_init(void) {
 	printk(KERN_INFO"EC initialized!\n");
