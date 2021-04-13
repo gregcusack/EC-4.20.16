@@ -21,17 +21,9 @@ int HOST_IP;
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock;
-spinlock_t fifo_spinlock;
-// static DECLARE_KFIFO(test_fifo, unsigned char, TEST_FIFO_SIZE);
+spinlock_t fifo_spinlock, mods_exist_spinlock;
 static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
-
-
-// static const unsigned char expected_result[TEST_FIFO_SIZE] = {
-// 	 3,  4,  5,  6,  7,  8,  9,  0,
-// 	 1, 20, 21, 22, 23, 24, 25, 26,
-// 	27, 28, 29, 30, 31, 32, 33, 34,
-// 	35, 36, 37, 38, 39, 40, 41, 42,
-// };
+static int mods_exist;
 
 /* TODO
  * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
@@ -42,16 +34,27 @@ static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need
 
 int stat_report_thread_fcn(void *stats) {
 	ec_message_t *stat_to_send;
-	// int ret;
+	int ret;
 	allow_signal(SIGKILL);
 
 	while(!kthread_should_stop()) {
 		// printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
-		// msleep(10);
+		msleep(10);
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		if(!kfifo_get(&stat_fifo, &stat_to_send)) { //returns 0 if fifo is empty
+		// if(!kfifo_get(&stat_fifo, &stat_to_send)) { //returns 0 if fifo is empty
+		// 	continue; //fifo empty
+		// } else {
+		// 	printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo)); //todo remove this. this is debug
+		// }
+		spin_lock(&mods_exist_spinlock);
+		if(!mods_exist) {
+			spin_unlock(&mods_exist_spinlock);
+			break;
+		}
+		spin_unlock(&mods_exist_spinlock);
+		if(!kfifo_out_spinlocked(&stat_fifo, &stat_to_send, 1, &fifo_spinlock)) { //returns 0 if fifo is empty
 			continue; //fifo empty
 		} else {
 			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo)); //todo remove this. this is debug
@@ -73,95 +76,16 @@ int stat_report_thread_fcn(void *stats) {
 		}
 		printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
 
-		// ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
-		// if(ret) {
-		// 	printk(KERN_ERR "DC threader: UDP TX failed\n");
-		// }
+		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		if(ret) {
+			printk(KERN_ERR "DC threader: UDP TX failed\n");
+		}
 		kfree(stat_to_send);
 	}
 	do_exit(0);
 	PERR("Worker task exiting\n");
 	return 0;
 }
-
-
-
-// int kfifo_example_thread_fcn(void *stats) {
-// 	allow_signal(SIGKILL);
-
-// 	unsigned char	buf[6];
-// 	unsigned char	i, j;
-// 	unsigned int	ret;
-// 	int flag = 1;
-
-// 	printk(KERN_INFO "byte stream fifo test start\n");
-
-// 	while(!kthread_should_stop()) {
-// 		while(flag && !kthread_should_stop()) {
-// 			printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
-
-// 			/* put string into the fifo */
-// 			kfifo_in(&test_fifo, "hello", 5);
-
-// 			/* put values into the fifo */
-// 			for (i = 0; i != 10; i++)
-// 				kfifo_put(&test_fifo, i);
-
-// 			/* show the number of used elements */
-// 			printk(KERN_INFO "fifo len: %u\n", kfifo_len(&test_fifo));
-
-// 			/* get max of 5 bytes from the fifo */
-// 			i = kfifo_out(&test_fifo, buf, 5);
-// 			printk(KERN_INFO "buf: %.*s\n", i, buf);
-
-// 			/* get max of 2 elements from the fifo */
-// 			ret = kfifo_out(&test_fifo, buf, 2);
-// 			printk(KERN_INFO "ret: %d\n", ret);
-// 			/* and put it back to the end of the fifo */
-// 			ret = kfifo_in(&test_fifo, buf, ret);
-// 			printk(KERN_INFO "ret: %d\n", ret);
-
-// 			/* skip first element of the fifo */
-// 			printk(KERN_INFO "skip 1st element\n");
-// 			kfifo_skip(&test_fifo);
-
-// 			/* put values into the fifo until is full */
-// 			for (i = 20; kfifo_put(&test_fifo, i); i++)
-// 				;
-
-// 			printk(KERN_INFO "queue len: %u\n", kfifo_len(&test_fifo));
-
-// 			/* show the first value without removing from the fifo */
-// 			if (kfifo_peek(&test_fifo, &i))
-// 				printk(KERN_INFO "%d\n", i);
-
-// 			/* check the correctness of all values in the fifo */
-// 			j = 0;
-// 			while (kfifo_get(&test_fifo, &i)) {
-// 				printk(KERN_INFO "item = %d\n", i);
-// 				if (i != expected_result[j++]) {
-// 					printk(KERN_WARNING "value mismatch: test failed\n");
-// 					return -EIO;
-// 				}
-// 			}
-// 			if (j != ARRAY_SIZE(expected_result)) {
-// 				printk(KERN_WARNING "size mismatch: test failed\n");
-// 				return -EIO;
-// 			}
-// 			printk(KERN_INFO "test passed\n");
-// 			flag = 0;
-// 		}
-// 		ssleep(5);
-// 		if (signal_pending(_ec_c->stat_report_thread)) {
-// 			break;
-// 		}
-
-// 	}
-// 	do_exit(0);
-// 	PERR("Worker task exiting\n");
-// 	return 0;
-// }
-
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
@@ -344,20 +268,21 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		kfree(serv_req);
 		goto failed;
 	}
+
 	//Does this return anything here??
 	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
-	// kfifo_in_spinlocked(&stat_fifo, &serv_req, 1, &fifo_spinlock); //add stat to fifo. 
+	kfifo_in_spinlocked(&stat_fifo, &serv_req, 1, &fifo_spinlock); //add stat to fifo. 
 	// kfifo_ret = kfifo_in(&stat_fifo, &serv_req, 1);
-	// ret = 0;
+	ret = 0;
 
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
+	// ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
-	if(unlikely(ret)) {
-		printk(KERN_INFO "TX failed\n");
-	}
-	kfree(serv_req);
+	// if(unlikely(ret)) {
+	// 	printk(KERN_INFO "TX failed\n");
+	// }
+	// kfree(serv_req);
 
 failed:
 	return ret;
@@ -628,16 +553,27 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
-	// mutex_init(&thread_array_lock);
-	// memset(thread_array, 0, sizeof(thread_array));
-	// INIT_KFIFO(stat_fifo);
-	// spin_lock_init(&fifo_spinlock);
+	mutex_init(&thread_array_lock);
+
+	spin_lock_init(&mods_exist_spinlock);
+	spin_lock(&mods_exist_spinlock);
+	mods_exist = 1;
+	spin_unlock(&mods_exist_spinlock);
+
+	memset(thread_array, 0, sizeof(thread_array));
+	INIT_KFIFO(stat_fifo);
+	spin_lock_init(&fifo_spinlock);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }
 
 static void __exit ec_connection_exit(void) {
 	int i;
+
+	spin_lock(&mods_exist_spinlock);
+	mods_exist = 0;
+	spin_unlock(&mods_exist_spinlock);
+
 	printk(KERN_INFO "[DC log] DC kernel threads being killed...\n");
 	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
 		if(thread_array[i]) {
