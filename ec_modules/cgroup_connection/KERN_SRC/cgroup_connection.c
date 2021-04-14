@@ -67,7 +67,7 @@ int stat_report_thread_fcn(void *stats) {
 			kfree(stat_to_send);
 			continue;
 		}
-		printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
+		// printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
 
 		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
 		if(ret) {
