@@ -43,11 +43,6 @@ int stat_report_thread_fcn(void *stats) {
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
-		// if(!kfifo_get(&stat_fifo, &stat_to_send)) { //returns 0 if fifo is empty
-		// 	continue; //fifo empty
-		// } else {
-		// 	printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo)); //todo remove this. this is debug
-		// }
 		spin_lock(&mods_exist_spinlock);
 		if(!mods_exist) {
 			spin_unlock(&mods_exist_spinlock);
@@ -56,8 +51,6 @@ int stat_report_thread_fcn(void *stats) {
 		spin_unlock(&mods_exist_spinlock);
 		if(!kfifo_out_spinlocked(&stat_fifo, &stat_to_send, 1, &fifo_spinlock)) { //returns 0 if fifo is empty
 			continue; //fifo empty
-		} else {
-			printk(KERN_INFO "DC threader: fifo_size: %d\n", kfifo_size(&stat_fifo)); //todo remove this. this is debug
 		}
 
 		if(!stat_to_send) {
