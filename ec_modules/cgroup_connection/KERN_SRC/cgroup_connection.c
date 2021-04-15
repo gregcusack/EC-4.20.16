@@ -40,6 +40,10 @@ int stat_report_thread_fcn(void *stats) {
 	while(!kthread_should_stop()) {
 		// printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
 		msleep(10);
+		if(!_ec_c->stat_report_thread) {
+			printk(KERN_ALERT "_ec_c->stat_report_thread is NULL. killing thread\n");
+			break;
+		}
 		if (signal_pending(_ec_c->stat_report_thread)) {
 			break;
 		}
