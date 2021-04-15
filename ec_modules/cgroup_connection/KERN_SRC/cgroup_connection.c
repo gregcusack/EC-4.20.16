@@ -262,6 +262,11 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 		goto failed;
 	}
 
+	if(!serv_req) {
+		printk(KERN_ERR "[DC_ERROR] in report_cpu_usage, serv_req == NULL\n");
+		ret = -1;
+		goto failed;
+	}
 	//Does this return anything here??
 	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
 	kfifo_in_spinlocked(&stat_fifo, &serv_req, 1, &fifo_spinlock); //add stat to fifo. 
@@ -478,12 +483,21 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
+	if(!_ec_c->thread_fcn) {
+		printk(KERN_ALERT "[DC ERROR]: _ec_c->thread_fcn is NULL!\n");
+		return __BADARG;
+	}
 
 	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
 	} else {
         printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+		return __BADARG;
+	}
+
+	if(!tg->css.id) {
+		printk(KERN_ERR "[DC ERROR]: tg->css.id == NULL!\n");
 		return __BADARG;
 	}
 
