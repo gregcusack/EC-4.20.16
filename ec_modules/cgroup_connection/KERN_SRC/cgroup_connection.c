@@ -159,7 +159,10 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 }
 
 int udp_send(struct socket* sock, const char* buff, const size_t length){
-
+	if(!sock || !buff) {
+		printk(KERN_ALERT "[DC ERROR]: udp_send() sock or buff is NULL\n");
+		return -1;
+	}
 	struct sockaddr_in raddr = {
 		.sin_family	= AF_INET,
 		.sin_port	= htons(CONTROLLER_UDP_PORT),
@@ -213,10 +216,6 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 		totbytes+=sent;
   	}
 	return totbytes == length ? 0 : totbytes;
-}
-
-uint64_t bytes_to_ull(char *bytes) {
-	return *((uint64_t*)bytes);
 }
 
 unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_message_t *serv_res, int flags) {
