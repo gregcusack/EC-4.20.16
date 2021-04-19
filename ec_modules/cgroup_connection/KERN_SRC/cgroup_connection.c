@@ -173,6 +173,7 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 
 	struct msghdr msg;
 	struct kvec vec;
+	int count = 0;
 	int sent, size_pkt, totbytes = 0;
 	long long buffer_size = length;
 	char * buf = (char *) buff;
@@ -189,6 +190,8 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	msg.msg_control = NULL;
 	msg.msg_controllen = 0;
 
+
+
 	// len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
 	// if(len < length) {
 	// 	printk(KERN_ALERT "Failed to send full msg on udp sock! len: %d, length: %d\n", len, length);
@@ -196,6 +199,9 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	// return 0;
 
   	while(buffer_size > 0){
+		if(count++ > 1) {
+			printk(KERN_INFO "udp send count: %d\n", count);
+		}
 		// if(buffer_size < MAX_UDP_SIZE) {
 		size_pkt = buffer_size;
 		// }
