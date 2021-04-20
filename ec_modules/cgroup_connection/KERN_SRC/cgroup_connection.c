@@ -11,16 +11,18 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define PORT 4444
 
-struct ec_connection* _ec_c; // for testing purposes
-EXPORT_SYMBOL(_ec_c);
+// struct ec_connection* _ec_c; // for testing purposes
+// EXPORT_SYMBOL(_ec_c);
 
 int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
+struct ec_connection *ec_connection_array[THREAD_ARRAY_SIZE];
+
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
-struct mutex thread_array_lock;
+struct mutex thread_array_lock, ec_connection_array_lock;
 spinlock_t fifo_spinlock, mods_exist_spinlock;
 static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
 static int mods_exist;
@@ -32,9 +34,13 @@ static int mods_exist;
  * What does kfifo_get() return? Returns 0 if fifo is empty
  */
 
-int stat_report_thread_fcn(void *stats) {
+//pass in cgid here, so we can find the _ec_c val needed 
+int stat_report_thread_fcn(void *_conn_index) {
 	ec_message_t *stat_to_send;
 	int ret;
+	int conn_index = *((int *)_conn_index);
+	struct ec_connection *_ec_c = ec_connection_array[conn_index];
+	printk(KERN_INFO "conn_index: %d\n", conn_index);
 	allow_signal(SIGKILL);
 
 	while(!kthread_should_stop()) {
@@ -396,9 +402,10 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
+	struct ec_connection *_ec_c;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, ret_udp, recv;
+	int ret, ret_udp, recv, connection_array_index;
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
@@ -496,8 +503,15 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		printk(KERN_ALERT "[DC ERROR]: _ec_c->thread_fcn is NULL!\n");
 		return __BADARG;
 	}
+	if(!tg->css.id) {
+		printk(KERN_ERR "[DC ERROR]: tg->css.id == NULL!\n");
+		return __BADARG;
+	}
 
-	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, NULL, "dc_thread");
+	connection_array_index = tg->css.id % THREAD_ARRAY_SIZE;
+	printk(KERN_INFO "css id mod thread_array_size: %d\n", connection_array_index);
+
+	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, (void*)&connection_array_index, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
 	} else {
@@ -505,17 +519,20 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	if(!tg->css.id) {
-		printk(KERN_ERR "[DC ERROR]: tg->css.id == NULL!\n");
-		return __BADARG;
-	}
+	mutex_lock(&ec_connection_array_lock);
+	ec_connection_array[connection_array_index] = _ec_c;
+	mutex_unlock(&ec_connection_array_lock);
 
-	printk(KERN_INFO "css id mod thread_array_size: %d\n", tg->css.id % THREAD_ARRAY_SIZE);
+
+	///////
 
 	mutex_lock(&thread_array_lock);
-	thread_array[tg->css.id % THREAD_ARRAY_SIZE] = _ec_c->stat_report_thread;
+	thread_array[connection_array_index] = _ec_c->stat_report_thread;
 	mutex_unlock(&thread_array_lock);
-	wake_up_process(_ec_c->stat_report_thread);
+	// wake_up_process(_ec_c->stat_report_thread);
+	wake_up_process(ec_connection_array[connection_array_index]->stat_report_thread);
+
+	////////
 
 	rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
@@ -570,6 +587,7 @@ static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
 	mutex_init(&thread_array_lock);
+	mutex_init(&ec_connection_array_lock);
 
 	spin_lock_init(&mods_exist_spinlock);
 	spin_lock(&mods_exist_spinlock);
@@ -577,6 +595,7 @@ static int __init ec_connection_init(void){
 	spin_unlock(&mods_exist_spinlock);
 
 	memset(thread_array, 0, sizeof(thread_array));
+	memset(ec_connection_array, 0, sizeof(ec_connection_array));
 	INIT_KFIFO(stat_fifo);
 	spin_lock_init(&fifo_spinlock);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
@@ -595,6 +614,7 @@ static void __exit ec_connection_exit(void) {
 		if(thread_array[i]) {
 			printk(KERN_INFO "killing thread array [i]: %d\n", i);
 			kthread_stop(thread_array[i]);
+			kfree(ec_connection_array[i]);
 
 		}
 	}
