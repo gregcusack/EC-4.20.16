@@ -63,7 +63,7 @@ typedef struct ec_msg {
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags);
 int tcp_rcv(struct socket* sock, char* str, int max_size, unsigned long flags);
-int udp_send(struct socket* sock, const char* buff, const size_t length);
+int udp_send(struct socket* sock, const char* buff, const size_t length, int port);
 unsigned long request_function(struct cfs_bandwidth *cfs_b, struct mem_cgroup *memcg);
 uint64_t acquire_cloud_global_slice(struct cfs_bandwidth* cfs_b, uint64_t slice);
 
