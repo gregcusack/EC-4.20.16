@@ -53,7 +53,7 @@ long resize_quota(uint32_t id, uint64_t _quota) {
 	cfs_b->resize_quota = 1;
 	ret = tg_set_cfs_quota(tg, _quota);
 	if(ret) {
-		printk(KERN_INFO "ret != 0. Error\n. ret: %d\n", ret);
+		printk(KERN_INFO "[RESIZE_QUOTA ERROR] tg_set_cfs_quota failed()! Error. ret: %d\n", ret);
 		return 1;
 	}
 #if DEBUG_LOGS

@@ -11,27 +11,84 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 
 #define PORT 4444
 
-struct ec_connection* _ec_c; // for testing purposes
-EXPORT_SYMBOL(_ec_c);
+// struct ec_connection* _ec_c; // for testing purposes
+// EXPORT_SYMBOL(_ec_c);
 
 int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
-// u32 create_address(u8 *ip)
-// {
-//         u32 addr = 0;
-//         int i;
+struct ec_connection *ec_connection_array[THREAD_ARRAY_SIZE];
 
-//         for(i=0; i<4; i++)
-//         {
-//                 addr += ip[i];
-//                 if(i==3)
-//                         break;
-//                 addr <<= 8;
-//         }
-//         return addr;
-// }
+
+struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
+struct mutex thread_array_lock, ec_connection_array_lock;
+spinlock_t fifo_spinlock, mods_exist_spinlock;
+static DECLARE_KFIFO(stat_fifo, ec_message_t*, STAT_FIFO_SIZE); //TODO: may need to make this dynamically allocated
+static int mods_exist;
+
+/* TODO
+ * Get difference between kfifo_get(), kfifo_peek(), and kfifo_out() -> when to use each one. I need the one that returns and removes the item from the fifo
+ * ------------get()/in() handle a single element. out()/put() handle multiple elements
+ * How do we wait until something is in the queue in a good way. Currently, it will just spin for days. that is bad.
+ * What does kfifo_get() return? Returns 0 if fifo is empty
+ */
+
+//pass in cgid here, so we can find the _ec_c val needed 
+int stat_report_thread_fcn(void *_conn_index) {
+	ec_message_t *stat_to_send;
+	int ret;
+	int conn_index = *((int *)_conn_index);
+	struct ec_connection *_ec_c = ec_connection_array[conn_index];
+	printk(KERN_INFO "conn_index: %d\n", conn_index);
+	allow_signal(SIGKILL);
+
+	while(!kthread_should_stop()) {
+		// printk(KERN_INFO "Worker thread executing on system CPU:%d \n", get_cpu());
+		msleep(10);
+		if(!_ec_c->stat_report_thread) {
+			printk(KERN_ALERT "_ec_c->stat_report_thread is NULL. killing thread\n");
+			break;
+		}
+		if (signal_pending(_ec_c->stat_report_thread)) {
+			break;
+		}
+		spin_lock(&mods_exist_spinlock);
+		if(!mods_exist) {
+			spin_unlock(&mods_exist_spinlock);
+			break;
+		}
+		spin_unlock(&mods_exist_spinlock);
+		if(!kfifo_out_spinlocked(&stat_fifo, &stat_to_send, 1, &fifo_spinlock)) { //returns 0 if fifo is empty
+			continue; //fifo empty
+		}
+
+		if(!stat_to_send) {
+			printk(KERN_ERR "DC threader: failed to read from kfifo queue!\n");
+			continue; //go back to top and try again
+		}
+		if(!stat_to_send->sockfd) {
+			printk(KERN_ERR "DC threader: sockfd in stat_to_send is NULL!\n");
+			kfree(stat_to_send);
+			continue;
+		}
+		if(!stat_to_send->cgroup_id) {
+			printk(KERN_ERR "DC threader: cgroup_id in stat_to_send is NULL!\n");
+			kfree(stat_to_send);
+			continue;
+		}
+		// printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
+
+		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		if(ret) {
+			printk(KERN_ERR "DC threader: UDP TX failed\n");
+		}
+		kfree(stat_to_send);
+	}
+	do_exit(0);
+	PERR("Worker task exiting\n");
+	return 0;
+}
 
 int tcp_send(struct socket* sock, const char* buff, const size_t length, unsigned long flags){
 
@@ -108,7 +165,10 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 }
 
 int udp_send(struct socket* sock, const char* buff, const size_t length){
-
+	if(!sock || !buff) {
+		printk(KERN_ALERT "[DC ERROR]: udp_send() sock or buff is NULL\n");
+		return -1;
+	}
 	struct sockaddr_in raddr = {
 		.sin_family	= AF_INET,
 		.sin_port	= htons(CONTROLLER_UDP_PORT),
@@ -118,6 +178,12 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	int raddrlen = sizeof(raddr);
 
 	struct msghdr msg;
+	struct kvec vec;
+	int count = 0;
+	int sent, size_pkt, totbytes = 0;
+	long long buffer_size = length;
+	char * buf = (char *) buff;
+	mm_segment_t oldmm;
 	// struct iovec iov;
 	// int len;
 	// len = strlen(buff) + 1;
@@ -130,20 +196,18 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	msg.msg_control = NULL;
 	msg.msg_controllen = 0;
 
+
+
 	// len = kernel_sendmsg(sock, &msg, (struct kvec *)&iov, 1, len);
 	// if(len < length) {
 	// 	printk(KERN_ALERT "Failed to send full msg on udp sock! len: %d, length: %d\n", len, length);
 	// }
 	// return 0;
 
-	struct kvec vec;
-	int sent, size_pkt, totbytes = 0;
-	long long buffer_size = length;
-	char * buf = (char *) buff;
-
-	mm_segment_t oldmm;
-
   	while(buffer_size > 0){
+		if(count++ > 1) {
+			printk(KERN_INFO "udp send count: %d\n", count);
+		}
 		// if(buffer_size < MAX_UDP_SIZE) {
 		size_pkt = buffer_size;
 		// }
@@ -166,10 +230,6 @@ int udp_send(struct socket* sock, const char* buff, const size_t length){
 	return totbytes == length ? 0 : totbytes;
 }
 
-uint64_t bytes_to_ull(char *bytes) {
-	return *((uint64_t*)bytes);
-}
-
 unsigned long read_write(struct socket *sockfd, ec_message_t *serv_req, ec_message_t *serv_res, int flags) {
 	unsigned long ret = 0;
 	if (sockfd == NULL) {
@@ -189,10 +249,10 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	ec_message_t* serv_req;
 	unsigned long ret;
 	struct socket* sockfd = NULL;
+	// int kfifo_ret;
 
 	if (unlikely(!cfs_b)) {
 		printk(KERN_ERR "[EC ERROR] report_cpu_usage(): cfs_b == NULL...idk what to do\n");
-		// return -1;
 		ret = -1;
 		goto failed;
 	}
@@ -200,7 +260,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	cfs_b->seq_num++;
 
 	serv_req = (ec_message_t*) kmalloc(sizeof(ec_message_t), GFP_KERNEL);
-
 	serv_req -> client_ip			= HOST_IP;
 	serv_req -> req_type 			= 0;
 	serv_req -> cgroup_id			= cfs_b->parent_tg->css.id;
@@ -208,18 +267,35 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> request				= cfs_b->nr_throttled;
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	serv_req -> seq_num				= cfs_b->seq_num;
-	// sockfd 							= cfs_b->ecc->ec_cli;
+	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
 	sockfd 							= cfs_b->ecc->ec_udp;
+
+	if(kfifo_is_full(&stat_fifo)) {
+		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
+		ret = -1;
+		kfree(serv_req);
+		goto failed;
+	}
+
+	if(!serv_req) {
+		printk(KERN_ERR "[DC_ERROR] in report_cpu_usage, serv_req == NULL\n");
+		ret = -1;
+		goto failed;
+	}
+	//Does this return anything here??
+	// kfifo_put(&stat_fifo, serv_req); //add stat to fifo. 
+	kfifo_in_spinlocked(&stat_fifo, &serv_req, 1, &fifo_spinlock); //add stat to fifo. 
+	// kfifo_ret = kfifo_in(&stat_fifo, &serv_req, 1);
+	ret = 0;
 
 	//printk(KERN_ERR "[EC TX INFO]: (%d, %d, %lld, %d, %lld)\n", serv_req->cgroup_id, serv_req->req_type, serv_req->rsrc_amnt, serv_req->request, serv_req->runtime_remaining);
 
-	// ret = tcp_send(sockfd, (char*)serv_req, sizeof(ec_message_t), MSG_DONTWAIT);
-	ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
+	// ret = udp_send(sockfd, (char*)serv_req, sizeof(ec_message_t));
 
-	if(unlikely(ret)) {
-		printk(KERN_INFO "TX failed\n");
-	}
-	kfree(serv_req);
+	// if(unlikely(ret)) {
+	// 	printk(KERN_INFO "TX failed\n");
+	// }
+	// kfree(serv_req);
 
 failed:
 	return ret;
@@ -326,9 +402,10 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct task_group *tg;
 	struct cfs_bandwidth *cfs_b;
 	struct mem_cgroup *memcg;
+	struct ec_connection *_ec_c;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, ret_udp, recv;
+	int ret, ret_udp, recv, connection_array_index;
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
@@ -413,6 +490,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	_ec_c = (struct ec_connection*)kmalloc(sizeof(struct ec_connection), GFP_KERNEL);
 	_ec_c -> request_memory 				= &request_memory;
 	_ec_c -> report_cpu_usage				= &report_cpu_usage;
+	_ec_c -> thread_fcn						= &stat_report_thread_fcn;
 	_ec_c -> ec_cli 						= sockfd_cli;
 	_ec_c -> ec_udp							= sockfd_udp;
 	cfs_b -> ecc 							= _ec_c;
@@ -421,7 +499,40 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		printk(KERN_ALERT "[EC ERROR] ERROR setting cfs_b->ecc\n");
 		return __BADARG;
 	}
-	printk(KERN_INFO"[Success] cfb_b successfully connected to ec_c!\n");
+	if(!_ec_c->thread_fcn) {
+		printk(KERN_ALERT "[DC ERROR]: _ec_c->thread_fcn is NULL!\n");
+		return __BADARG;
+	}
+	if(!tg->css.id) {
+		printk(KERN_ERR "[DC ERROR]: tg->css.id == NULL!\n");
+		return __BADARG;
+	}
+
+	connection_array_index = tg->css.id % THREAD_ARRAY_SIZE;
+	printk(KERN_INFO "css id mod thread_array_size: %d\n", connection_array_index);
+
+	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, (void*)&connection_array_index, "dc_thread");
+	if (_ec_c->stat_report_thread) {
+        printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
+	} else {
+        printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
+		return __BADARG;
+	}
+
+	mutex_lock(&ec_connection_array_lock);
+	ec_connection_array[connection_array_index] = _ec_c;
+	mutex_unlock(&ec_connection_array_lock);
+
+
+	///////
+
+	mutex_lock(&thread_array_lock);
+	thread_array[connection_array_index] = _ec_c->stat_report_thread;
+	mutex_unlock(&thread_array_lock);
+	// wake_up_process(_ec_c->stat_report_thread);
+	wake_up_process(ec_connection_array[connection_array_index]->stat_report_thread);
+
+	////////
 
 	rcu_read_lock();
 	memcg = mem_cgroup_from_task(tsk_in_cg);
@@ -475,11 +586,38 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 static int __init ec_connection_init(void){
 
 	ec_connect_ = &ec_connect;
+	mutex_init(&thread_array_lock);
+	mutex_init(&ec_connection_array_lock);
+
+	spin_lock_init(&mods_exist_spinlock);
+	spin_lock(&mods_exist_spinlock);
+	mods_exist = 1;
+	spin_unlock(&mods_exist_spinlock);
+
+	memset(thread_array, 0, sizeof(thread_array));
+	memset(ec_connection_array, 0, sizeof(ec_connection_array));
+	INIT_KFIFO(stat_fifo);
+	spin_lock_init(&fifo_spinlock);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
 	return 0;
 }
 
-static void __exit ec_connection_exit(void){
+static void __exit ec_connection_exit(void) {
+	int i;
+
+	spin_lock(&mods_exist_spinlock);
+	mods_exist = 0;
+	spin_unlock(&mods_exist_spinlock);
+
+	printk(KERN_INFO "[DC log] DC kernel threads being killed...\n");
+	for(i=0; i < THREAD_ARRAY_SIZE; i++) {
+		if(thread_array[i]) {
+			printk(KERN_INFO "killing thread array [i]: %d\n", i);
+			kthread_stop(thread_array[i]);
+			kfree(ec_connection_array[i]);
+
+		}
+	}
 	printk(KERN_INFO"[Elastic Container Log] Kernel module has been removed!\n");
 }
 
