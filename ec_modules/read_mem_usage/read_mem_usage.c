@@ -16,7 +16,7 @@ unsigned long read_mem_usage(unsigned short id) {
 
 	cur_usage = mem_cgroup_usage(memcg, _NOSWAP_);
 	
-	printk(KERN_INFO"[dbg] read_mem_usage: Current usage of the cgroup is %lu\n", cur_usage);
+	// printk(KERN_INFO"[dbg] read_mem_usage: Current usage of the cgroup is %lu\n", cur_usage);
 	
 	return cur_usage;
 	
