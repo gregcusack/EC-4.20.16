@@ -19,13 +19,13 @@ long resize_max_mem(unsigned short id, unsigned long new_mem_limit, int is_memsw
 	cur_usage = mem_cgroup_usage(memcg, is_memsw);
 	mem_limit = mem_cgroup_get_max(memcg);
 
-// #if DEBUG_LOGS
+#if DEBUG_LOGS
 	printk(KERN_INFO"[dbg] resize_max_mem: Current usage of the cgroup: %lu, mem_limit: %lu\n", cur_usage, mem_limit);
 	printk(KERN_INFO"[dbg] resize_max_mem: attempt to resize to: %lu\n", new_mem_limit);
-// #endif
+#endif
 	if (cur_usage < new_mem_limit) {
 		if(!mem_cgroup_resize_max(memcg, new_mem_limit,  is_memsw)) {
-			printk(KERN_INFO"[dbg] resize_max_mem: New mem limit of the cgroup is : %lu\n", new_mem_limit);
+			printk(KERN_INFO"[dbg] resize_max_mem: Limit resized from %lu --> %lu\n", mem_limit, new_mem_limit);
 			// rcu_read_unlock();
 			return 0;
 		}
