@@ -15,7 +15,7 @@ unsigned long read_mem_limit(unsigned short id) {
 	rcu_read_unlock();
 
 	mem_limit = mem_cgroup_get_max(memcg);
-	// printk(KERN_INFO"[dbg] read_mem_limit: Mem limit of the cgroup is %lu\n", mem_limit);
+	printk(KERN_INFO"[dbg] read_mem_limit: Mem limit of the cgroup is %lu\n", mem_limit);
 	
 	return mem_limit;
 }
