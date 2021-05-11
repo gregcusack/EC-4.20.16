@@ -343,14 +343,6 @@
 332	common	statx			__x64_sys_statx
 333	common	io_pgetevents		__x64_sys_io_pgetevents
 334	common	rseq			__x64_sys_rseq
-335	64		ec_connect_		__x64_sys_ec_connect_
-336 64		resize_max_mem_		__x64_sys_resize_max_mem_
-337	64		increase_memcg_margin_  __x64_sys_increase_memcg_margin_
-338 64		resize_quota_	__x64_sys_resize_quota_
-339 64		read_quota_		__x64_sys_read_quota_
-340 64		get_parent_cgid_	__x64_sys_get_parent_cgid_
-341 64      read_mem_usage_ __x64_sys_read_mem_usage_
-342 64      read_mem_limit_ __x64_sys_read_mem_limit_
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact

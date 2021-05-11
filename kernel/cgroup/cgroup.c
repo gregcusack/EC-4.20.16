@@ -5801,7 +5801,6 @@ struct cgroup_subsys_state *css_from_id(int id, struct cgroup_subsys *ss)
 	WARN_ON_ONCE(!rcu_read_lock_held());
 	return idr_find(&ss->css_idr, id);
 }
-EXPORT_SYMBOL(css_from_id);
 
 /**
  * cgroup_get_from_path - lookup and get a cgroup from its default hierarchy path

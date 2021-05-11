@@ -65,9 +65,6 @@
 #include <linux/task_work.h>
 #include <linux/tsacct_kern.h>
 
-/* EC */
-#include <ec/ec_connection.h>
-
 #include <asm/tlb.h>
 
 #ifdef CONFIG_PARAVIRT
@@ -353,14 +350,6 @@ struct cfs_bandwidth {
 	u64			throttled_time;
 
 	bool                    distribute_running;
-
-	/* EC -- is_ec flag */
-	struct ec_connection	*ecc;
-	int 					is_ec; //0=not an EC, 1=is an EC
-	struct task_group 	*parent_tg;
-	short resize_quota;
-	u64 seq_num;
-
 #endif
 };
 
@@ -404,12 +393,6 @@ struct task_group {
 #endif
 
 	struct cfs_bandwidth	cfs_bandwidth;
-
-	/* EC components
-	 * access socket through cfs_bandwidth
-	 */
-	//pointer here could be an issue, leaving out for now
-	//int				*is_ec;
 };
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
