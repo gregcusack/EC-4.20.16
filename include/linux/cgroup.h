@@ -92,7 +92,7 @@ extern struct css_set init_css_set;
 	static_branch_likely(&ss ## _on_dfl_key)
 
 bool css_has_online_children(struct cgroup_subsys_state *css);
-struct cgroup_subsys_state *css_from_id(int id, struct cgroup_subsys *ss);
+extern struct cgroup_subsys_state *css_from_id(int id, struct cgroup_subsys *ss);
 struct cgroup_subsys_state *cgroup_get_e_css(struct cgroup *cgroup,
 					     struct cgroup_subsys *ss);
 struct cgroup_subsys_state *css_tryget_online_from_dir(struct dentry *dentry,
