@@ -4,6 +4,7 @@
 unsigned long read_mem_limit(unsigned short id) {
 
 	struct mem_cgroup* memcg;
+	int itr = 0;
 	unsigned long mem_limit = 0;
 
 	rcu_read_lock();
@@ -14,8 +15,17 @@ unsigned long read_mem_limit(unsigned short id) {
 
 	rcu_read_unlock();
 
+retry:
 	mem_limit = mem_cgroup_get_max(memcg);
-	// printk(KERN_INFO"[dbg] read_mem_limit: Mem limit of the cgroup is %lu\n", mem_limit);
+	printk(KERN_INFO"[dbg] read_mem_limit: Mem limit of the cgroup is %lu\n", mem_limit);
+	if(mem_limit == 2251799813685247) {
+		if(itr++ < 10) {
+			printk(KERN_INFO"[dbg] read_mem_limit retry! itr: %d\n", itr);
+			goto retry;
+		} else {
+			return 1;
+		}
+	}
 	
 	return mem_limit;
 }

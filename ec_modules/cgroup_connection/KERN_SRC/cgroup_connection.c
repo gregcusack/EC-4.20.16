@@ -14,12 +14,13 @@ Description		:		LINUX DEVICE DRIVER PROJECT
 // struct ec_connection* _ec_c; // for testing purposes
 // EXPORT_SYMBOL(_ec_c);
 
-int CONTROLLER_UDP_PORT;
+// int CONTROLLER_UDP_PORT;
 int CONTROLLER_IP;
 int HOST_IP;
 
 struct ec_connection *ec_connection_array[THREAD_ARRAY_SIZE];
 
+int cgId_to_controller_port[THREAD_ARRAY_SIZE];
 
 struct task_struct *thread_array[THREAD_ARRAY_SIZE]; 
 struct mutex thread_array_lock, ec_connection_array_lock;
@@ -37,7 +38,7 @@ static int mods_exist;
 //pass in cgid here, so we can find the _ec_c val needed 
 int stat_report_thread_fcn(void *_conn_index) {
 	ec_message_t *stat_to_send;
-	int ret;
+	int ret, port;
 	int conn_index = *((int *)_conn_index);
 	struct ec_connection *_ec_c = ec_connection_array[conn_index];
 	printk(KERN_INFO "conn_index: %d\n", conn_index);
@@ -77,9 +78,15 @@ int stat_report_thread_fcn(void *_conn_index) {
 			kfree(stat_to_send);
 			continue;
 		}
+		port = cgId_to_controller_port[stat_to_send->cgroup_id];
+		if(!port) {
+			printk(KERN_ERR "DC threader: port in stat_to_send is 0!\n");
+			kfree(stat_to_send);
+			continue;
+		}
 		// printk(KERN_INFO "cgid to send: %d\n", stat_to_send->cgroup_id);
 
-		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t));
+		ret = udp_send(stat_to_send->sockfd, (char*)stat_to_send, sizeof(ec_message_t), port);
 		if(ret) {
 			printk(KERN_ERR "DC threader: UDP TX failed\n");
 		}
@@ -164,14 +171,14 @@ int tcp_rcv(struct socket* sock, char* str, int length, unsigned long flags){
 	return len;//len == length ? 0:len;
 }
 
-int udp_send(struct socket* sock, const char* buff, const size_t length){
+int udp_send(struct socket* sock, const char* buff, const size_t length, int port){
 	if(!sock || !buff) {
 		printk(KERN_ALERT "[DC ERROR]: udp_send() sock or buff is NULL\n");
 		return -1;
 	}
 	struct sockaddr_in raddr = {
 		.sin_family	= AF_INET,
-		.sin_port	= htons(CONTROLLER_UDP_PORT),
+		.sin_port	= htons(port),
 		.sin_addr	= { htonl(CONTROLLER_IP) }
 	};
 
@@ -268,7 +275,6 @@ int report_cpu_usage(struct cfs_bandwidth *cfs_b){
 	serv_req -> runtime_remaining 	= cfs_b->runtime;
 	serv_req -> seq_num				= cfs_b->seq_num;
 	serv_req -> sockfd				= cfs_b->ecc->ec_udp;
-	sockfd 							= cfs_b->ecc->ec_udp;
 
 	if(kfifo_is_full(&stat_fifo)) {
 		printk(KERN_ERR "fifo is full! bad! idk what to do!!\n");
@@ -436,7 +442,7 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	}
 
 	CONTROLLER_IP = GCM_ip;
-	CONTROLLER_UDP_PORT = GCM_udp_port;
+	// CONTROLLER_UDP_PORT = GCM_udp_port;
 	HOST_IP = agent_ip;
 
 ////////////
@@ -518,10 +524,12 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
         printk(KERN_INFO "[DC DBG]: Thread creation failed\n");
 		return __BADARG;
 	}
-
+ 
 	mutex_lock(&ec_connection_array_lock);
 	ec_connection_array[connection_array_index] = _ec_c;
 	mutex_unlock(&ec_connection_array_lock);
+
+	cgId_to_controller_port[connection_array_index] = GCM_udp_port;
 
 
 	///////
@@ -596,6 +604,7 @@ static int __init ec_connection_init(void){
 
 	memset(thread_array, 0, sizeof(thread_array));
 	memset(ec_connection_array, 0, sizeof(ec_connection_array));
+	memset(cgId_to_controller_port, 0, sizeof(cgId_to_controller_port));
 	INIT_KFIFO(stat_fifo);
 	spin_lock_init(&fifo_spinlock);
 	printk(KERN_INFO"[Elastic Container Log] Kernel module initialized!\n");
