@@ -40,7 +40,7 @@
 #endif 
 
 #define __BADARG -1
-#define THREAD_ARRAY_SIZE 256
+#define THREAD_ARRAY_SIZE 512
 #define STAT_FIFO_SIZE	128
 // #define TEST_FIFO_SIZE	32
 
