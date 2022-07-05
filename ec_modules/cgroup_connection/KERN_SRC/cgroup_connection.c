@@ -42,6 +42,7 @@ int stat_report_thread_fcn(void *_conn_index) {
 	int conn_index = *((int *)_conn_index);
 	struct ec_connection *_ec_c = ec_connection_array[conn_index];
 	printk(KERN_INFO "conn_index: %d\n", conn_index);
+	kfree(_conn_index);
 	allow_signal(SIGKILL);
 
 	while(!kthread_should_stop()) {
@@ -411,7 +412,8 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	struct ec_connection *_ec_c;
 
 	ec_message_t *init_msg_req, *init_msg_res;
-	int ret, ret_udp, recv, connection_array_index;
+	int ret, ret_udp, recv; //, connection_array_index;
+	int* connection_array_index = (int*) kmalloc(sizeof(int), GFP_KERNEL);
 
 	printk(KERN_INFO "in ec_connect. gcm_ip: %d, gcm_tcp_port: %d, gcm_udp_port: %d, pid: %d, agent_ip: %d!\n", GCM_ip, GCM_tcp_port, GCM_udp_port, pid, agent_ip);
 
@@ -514,10 +516,11 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 		return __BADARG;
 	}
 
-	connection_array_index = tg->css.id % THREAD_ARRAY_SIZE;
-	printk(KERN_INFO "css id mod thread_array_size: %d\n", connection_array_index);
+	//conn_index is somehow 0. that means tg->css.id is 0?? something weird going on
+	*connection_array_index = tg->css.id % THREAD_ARRAY_SIZE;
+	printk(KERN_INFO "css id mod thread_array_size: %d\n", *connection_array_index);
 
-	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, (void*)&connection_array_index, "dc_thread");
+	_ec_c->stat_report_thread = kthread_create(_ec_c->thread_fcn, (void*)connection_array_index, "dc_thread");
 	if (_ec_c->stat_report_thread) {
         printk(KERN_INFO "[DC DBG]: Thread Created successfully\n");
 	} else {
@@ -526,19 +529,19 @@ int ec_connect(unsigned int GCM_ip, int GCM_tcp_port, int GCM_udp_port, int pid,
 	}
  
 	mutex_lock(&ec_connection_array_lock);
-	ec_connection_array[connection_array_index] = _ec_c;
+	ec_connection_array[*connection_array_index] = _ec_c;
 	mutex_unlock(&ec_connection_array_lock);
 
-	cgId_to_controller_port[connection_array_index] = GCM_udp_port;
+	cgId_to_controller_port[*connection_array_index] = GCM_udp_port;
 
 
 	///////
 
 	mutex_lock(&thread_array_lock);
-	thread_array[connection_array_index] = _ec_c->stat_report_thread;
+	thread_array[*connection_array_index] = _ec_c->stat_report_thread;
 	mutex_unlock(&thread_array_lock);
 	// wake_up_process(_ec_c->stat_report_thread);
-	wake_up_process(ec_connection_array[connection_array_index]->stat_report_thread);
+	wake_up_process(ec_connection_array[*connection_array_index]->stat_report_thread);
 
 	////////
 
